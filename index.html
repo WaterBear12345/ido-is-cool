@@ -156,6 +156,9 @@ nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;
 .card h2{margin:0 0 6px;font-size:16px;font-weight:600}
 .card p{margin:0 0 10px;font-size:14px;color:var(--steel);line-height:1.5}
 .card p:last-child{margin-bottom:0}
+.card.nag{box-shadow:inset 3px 0 0 var(--accent)}
+.card.alert{box-shadow:inset 3px 0 0 var(--p25)}
+.card.alert h2{color:var(--p25)}
 .card button{height:46px;width:100%;border-radius:11px;background:var(--ground);
              font-size:15px;font-weight:600;margin-top:6px}
 .card button.warn{color:var(--p25)}
@@ -319,18 +322,22 @@ const DEFAULT_SESSIONS = {
   lowerA:{name:"Lower A", day:0, plan:[["squat",3],["rdl",3],["legcurlA",2],["calfA",2],["crunch",2]]},
   upperA:{name:"Upper A", day:1, plan:[["bench",3],["pulldown",3],["lowrow",2],["ohp",2],["tripushA",2],["preacher",2]]},
   lowerB:{name:"Lower B", day:3, plan:[["splitsquat",3],["squatback",2],["legcurlB",2],["hipadd",2],["calfB",2],["crunch",2]]},
-  upperB:{name:"Upper B", day:4, plan:[["incline",3],["lowrow",3],["flies",2],["facepull",2],["latraise",2],["tripushB",2],["hammer",2]]}
+  upperB:{name:"Upper B", day:5, plan:[["incline",3],["lowrow",3],["flies",2],["facepull",2],["latraise",2],["tripushB",2],["hammer",2]]}
 };
 const DEFAULT_ORDER = ["lowerA","upperA","lowerB","upperB"];
 const DEFAULT_START = "2026-09-07";
 const defaultProg = () => JSON.parse(JSON.stringify({ex:DEFAULT_EX, sessions:DEFAULT_SESSIONS, order:DEFAULT_ORDER}));
 
 /* ── state ─────────────────────────────────────────────────────────────── */
+/* Everything lives in localStorage under KEY, on this device only. There is no
+   server: a static page can be served by GitHub Pages but never written to. A
+   dated backup file after each session is what makes the log outlive the phone. */
 let S;
+const DEFAULTS = () => ({autosave:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0});
 function blank(){
   const prog = defaultProg(), w = {};
   for (const k in prog.ex) w[k] = prog.ex[k].start;
-  return {v:2, prog, weights:w, history:[], live:null, settings:{autosave:false, startDate:DEFAULT_START}};
+  return {v:2, prog, weights:w, history:[], live:null, settings:DEFAULTS()};
 }
 /* Accepts a v1 or v2 object, returns a clean v2 object, or null if it is not a Barload backup. */
 function migrate(o){
@@ -344,7 +351,7 @@ function migrate(o){
     n.history = o.history; n.live = o.live || null;
   }
   n.v = 2;
-  n.settings = Object.assign({autosave:false, startDate:DEFAULT_START}, n.settings || {});
+  n.settings = Object.assign(DEFAULTS(), n.settings || {});
   n.history = Array.isArray(n.history) ? n.history.filter(r => r && Array.isArray(r.entries)) : [];
   if (!Array.isArray(n.prog.order)) n.prog.order = Object.keys(n.prog.sessions);
   n.prog.order = n.prog.order.filter(id => n.prog.sessions[id]);
@@ -373,11 +380,41 @@ function load(){
   S = migrate(o) || blank();
   if (fromOld) save();              /* write the v2 key straight away; v1 stays as a fallback copy */
 }
+let storageOK = true, persisted = null, toastT;   /* persisted: null unknown, true/false answered */
 function save(){
-  try { localStorage.setItem(KEY, JSON.stringify(S)); }
-  catch (e) { toast("Storage is full or blocked. Export a backup."); }
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  catch (e) {
+    storageOK = false;
+    toast("This browser is not saving anything. Export a backup now.");
+  }
+}
+/* Ask the browser not to evict the data. Chrome and Firefox answer; Safari has no
+   such API, and instead exempts apps added to the home screen. */
+function askPersist(){
+  try {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    navigator.storage.persisted()
+      .then(ok => ok || navigator.storage.persist())
+      .then(ok => { persisted = !!ok; if (tab === "more") render(); })
+      .catch(() => {});
+  } catch (e) {}
+}
+function sinceBackup(){ return Math.max(0, S.history.length - (S.settings.lastBackupCount || 0)); }
+function noteBackup(){
+  S.settings.lastBackupAt = new Date().toISOString();
+  S.settings.lastBackupCount = S.history.length;
+  save();
+}
+function backupNow(){
+  dl(`barload-backup-${todayISO()}.json`, JSON.stringify(S), "application/json");
+  noteBackup();
+  toast("Backup saved. Keep it in Files or Drive.");
+  render();
 }
 load();
+try { localStorage.setItem(KEY, JSON.stringify(S)); }   /* prove storage works before anything is logged */
+catch (e) { storageOK = false; }
+askPersist();
 
 /* ── helpers ───────────────────────────────────────────────────────────── */
 const kg = n => (n === null || n === undefined || n === "" || Number.isNaN(n)) ? "—"
@@ -431,7 +468,6 @@ function plateBreak(total){
   return {plates:out, left:Math.round(side * 100) / 100};
 }
 
-let toastT;
 function toast(msg){
   let el = document.getElementById("toast");
   if (!el){
@@ -492,6 +528,7 @@ function finishSession(){
   if (S.settings.autosave){
     const slug = rec.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     dl(`barload-${rec.date}-${slug}.json`, JSON.stringify(S), "application/json");
+    noteBackup();
   }
   go("train");
 }
@@ -560,6 +597,8 @@ function render(){
                         : `Week ${wn}${wn <= 12 ? " of 12" : ""} · `) + fmtDate(todayISO());
       v.innerHTML = pickView();
       v.querySelectorAll("[data-start]").forEach(b => b.onclick = () => startSession(b.dataset.start));
+      const nb = v.querySelector("#nagbk");
+      if (nb) nb.onclick = backupNow;
     }
   } else if (tab === "plan"){
     H.textContent = "Plan";
@@ -584,7 +623,18 @@ function render(){
 /* ── train: picker ─────────────────────────────────────────────────────── */
 function pickView(){
   const wk = weekDates(), today = todayISO();
-  let h = `<div class="week">`;
+  let h = "";
+  if (!storageOK){
+    h += `<div class="card alert"><h2>Nothing is being saved</h2>
+      <p>This browser is refusing to store data, usually private browsing or a full disk.
+         Anything you log now is lost when you close the app. Export a backup from More after
+         each session, or open the app in a normal window.</p></div>`;
+  } else if (sinceBackup() >= 4){
+    h += `<div class="card nag"><h2>Time for a backup</h2>
+      <p>${sinceBackup()} sessions logged since your last backup file. This phone holds the only copy.</p>
+      <button class="primary" id="nagbk">Save a backup file</button></div>`;
+  }
+  h += `<div class="week">`;
   wk.forEach((d, i) => {
     const sid = S.prog.order.find(id => S.prog.sessions[id].day === i);
     const logged = S.history.filter(r => r.date === d);
@@ -1022,13 +1072,38 @@ function wireProgress(){
 }
 
 /* ── more ──────────────────────────────────────────────────────────────── */
+function whereCard(){
+  const n = sinceBackup();
+  const last = S.settings.lastBackupAt
+    ? new Date(S.settings.lastBackupAt).toLocaleDateString("en-GB", {day:"numeric", month:"short", year:"numeric"})
+    : "never";
+  const p = persisted === true ? "Granted. This browser has been asked not to evict the log."
+          : persisted === false ? "Refused by this browser. On iPhone it is the home screen icon that protects it."
+          : "This browser has no such setting. On iPhone it is the home screen icon that protects it.";
+  return `<div class="card${storageOK ? "" : " alert"}"><h2>Where your log is kept</h2>
+    <p>${storageOK
+      ? `Every rep you tap is written straight to this browser's own storage, on this device, under the
+         name <b>${KEY}</b>. Nothing is sent anywhere and there is no account, because a page served by
+         GitHub Pages can be read but never written to. This device holds the only copy.`
+      : `This browser is refusing to store anything, usually private browsing or a full disk.
+         Nothing you log will survive closing the app.`}</p>
+    <p><b>Survives</b> closing the app, restarting the phone, and having no signal.
+       <b>Does not survive</b> clearing Safari website data, deleting the home screen icon,
+       or moving to a new phone.</p>
+    <p><b>Eviction protection:</b> ${p}</p>
+    <p><b>Last backup file:</b> ${last}${n ? `, ${n} session${n === 1 ? "" : "s"} ago` : ""}.</p>
+  </div>`;
+}
+
 function moreView(){
   const n = S.history.length;
-  return `
+  return whereCard() + `
   <div class="card"><h2>Back up your log</h2>
-    <p>Everything lives on this phone only. Export a copy now and then, and keep it in Files or Drive.</p>
+    <p>A backup file is the only copy that outlives this phone. Save it into Files, which puts it in
+       iCloud Drive, or into Drive. The JSON file restores everything; the CSV is for reading in a
+       spreadsheet and cannot be restored.</p>
+    <button id="json">Save a full backup file</button>
     <button id="csv">Export ${n} session${n === 1 ? "" : "s"} as CSV</button>
-    <button id="json">Export a full backup file</button>
     <label class="tgl"><input type="checkbox" id="auto"${S.settings.autosave ? " checked" : ""}>
       Save a dated backup file after every session</label>
   </div>
@@ -1072,8 +1147,7 @@ function wireMore(){
                    ...Array.from({length:MAXSETS}, (_, i) => x.reps[i] ?? "")]);
     dl("barload-log.csv", rows.map(r => r.map(csvq).join(",")).join("\n"), "text/csv");
   };
-  document.getElementById("json").onclick = () =>
-    dl(`barload-backup-${todayISO()}.json`, JSON.stringify(S), "application/json");
+  document.getElementById("json").onclick = backupNow;
   document.getElementById("auto").onchange = ev => { S.settings.autosave = ev.target.checked; save(); };
   const fileIn = document.getElementById("file");
   document.getElementById("imp").onclick = () => fileIn.click();

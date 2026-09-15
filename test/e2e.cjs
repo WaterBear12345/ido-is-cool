@@ -78,7 +78,7 @@ function serve(){
   eq("seven week cells", await page.locator(".week button").count(), 7);
   check("sub shows week counter", /Week \d+ of 12/.test(await page.textContent("#hSub")), await page.textContent("#hSub"));
   const dowNow = await page.evaluate(() => (new Date().getDay() + 6) % 7);
-  const expectToday = {0:"Lower A", 1:"Upper A", 3:"Lower B", 4:"Upper B"}[dowNow];
+  const expectToday = {0:"Lower A", 1:"Upper A", 3:"Lower B", 5:"Upper B"}[dowNow];
   const card = await page.textContent(".card h2");
   check("today card matches weekday", expectToday ? card === `Today is ${expectToday}` : card === "Rest day", card);
   eq("plate 105", await page.evaluate(() => plateBreak(105).plates.map(p => p[0])), [25, 15, 2.5]);
@@ -87,7 +87,21 @@ function serve(){
   eq("plate 10 is lighter than the bar", await page.evaluate(() => plateBreak(10)), null);
   eq("plate 61 leaves a remainder", await page.evaluate(() => plateBreak(61).left), 0.5);
   eq("default set counts", await page.evaluate(() => S.prog.order.map(id => setsOf(S.prog.sessions[id]))), [12, 14, 13, 16]);
+  eq("default schedule is Mon Tue Thu Sat", await page.evaluate(() => S.prog.order.map(id => S.prog.sessions[id].day)), [0, 1, 3, 5]);
+  eq("Saturday cell holds Upper B", await page.locator(".week button").nth(5).locator(".s").textContent(), "Up B");
+  eq("Friday is now a rest day", await page.locator(".week button").nth(4).locator(".s").textContent(), "—");
   eq("kg formatting", await page.evaluate(() => [kg(62.5), kg(60), kg(32.5), kg(null)]), ["62.5", "60", "32.5", "—"]);
+  eq("a fresh load writes the storage key at once",
+     await page.evaluate(() => JSON.parse(localStorage.getItem("barload.v2")).prog.order.length), 4);
+  eq("auto backup is on by default", await page.evaluate(() => S.settings.autosave), true);
+  eq("reps reach storage as they are tapped, not on finish", await page.evaluate(() => {
+    startSession("upperA");
+    S.live.log[0].reps[0] = 7; save();
+    const written = JSON.parse(localStorage.getItem("barload.v2")).live.log[0].reps[0];
+    S.live = null; save(); render();
+    return written;
+  }), 7);
+  await page.evaluate(() => { S.settings.autosave = false; save(); });   /* quieter run; re-tested below */
   await shot(page, "01-train");
 
   console.log("\nProgression rule");
@@ -212,9 +226,9 @@ function serve(){
   check("shared tag shown", (await lowerB.locator(".pl").last().textContent()).includes("shared"));
 
   /* move Upper B to Saturday; Lower A rename; delete and add session */
-  await upperB.locator('[data-day="upperB:5"]').click();
+  await upperB.locator('[data-day="upperB:2"]').click();
   st = await S(page);
-  eq("Upper B moved to Saturday", st.prog.sessions.upperB.day, 5);
+  eq("Upper B moved off Saturday to Wednesday", st.prog.sessions.upperB.day, 2);
   await upperB.locator('[data-day="upperB:0"]').click();
   st = await S(page);
   eq("taking Monday unschedules Lower A", [st.prog.sessions.upperB.day, st.prog.sessions.lowerA.day], [0, null]);
@@ -235,7 +249,7 @@ function serve(){
   await tapTab(page, "plan");
   await page.click("[data-resetprog]");
   st = await S(page);
-  eq("reset restores default sessions", [st.prog.sessions.lowerA.name, st.prog.sessions.upperB.day, st.prog.order.length], ["Lower A", 4, 4]);
+  eq("reset restores default sessions", [st.prog.sessions.lowerA.name, st.prog.sessions.upperB.day, st.prog.order.length], ["Lower A", 5, 4]);
   eq("reset keeps progressed weights", st.weights.bench, 65);
 
   console.log("\nExport and restore");
@@ -248,14 +262,19 @@ function serve(){
   eq("backup is v2", backup.v, 2);
   eq("backup carries history", backup.history.length, 2);
   check("backup filename is dated", /^barload-backup-\d{4}-\d{2}-\d{2}\.json$/.test(download.suggestedFilename()), download.suggestedFilename());
+  eq("saving a backup records it", await page.evaluate(() => [sinceBackup(), !!S.settings.lastBackupAt]), [0, true]);
+  check("the card names the storage key", (await page.textContent(".card")).includes("barload.v2"));
+  check("the card reports a last backup", (await page.textContent(".card")).includes("Last backup file:"));
   const [csv] = await Promise.all([page.waitForEvent("download"), page.click("#csv")]);
   const csvTmp = path.join(os.tmpdir(), "barload-test.csv");
   await csv.saveAs(csvTmp);
   const lines = fs.readFileSync(csvTmp, "utf8").split("\n");
   eq("csv header", lines[0], "date,session,exercise,weight_kg,set1,set2,set3,set4,set5,set6");
   check("csv has the incomplete bench row", lines.some(l => /Upper A,Bench press,62.5,8,8,,,,/.test(l)), lines[1]);
+  await page.uncheck("#auto");
+  eq("autosave toggle turns off", (await S(page)).settings.autosave, false);
   await page.check("#auto");
-  eq("autosave toggle persists", (await S(page)).settings.autosave, true);
+  eq("autosave toggle turns back on", (await S(page)).settings.autosave, true);
   await page.click("#wipe");
   st = await S(page);
   eq("wipe clears history", st.history.length, 0);
@@ -280,6 +299,44 @@ function serve(){
   const [auto] = await Promise.all([page.waitForEvent("download"), page.click("#fin")]);
   check("dated per-session backup", /^barload-\d{4}-\d{2}-\d{2}-lower-a\.json$/.test(auto.suggestedFilename()), auto.suggestedFilename());
   eq("squat went up", (await S(page)).weights.squat, 110);
+  await page.close();
+
+  console.log("\nBackup prompts and blocked storage");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => {
+    S.settings.autosave = false;
+    S.history = [1, 2, 3].map(n => ({date:`2026-09-0${n}`, id:"lowerA", name:"Lower A",
+      entries:[{k:"squat", name:"Squats", weight:100, reps:[6, 6, 6]}]}));
+    save(); render();
+  });
+  eq("no prompt after three sessions", await page.locator(".card.nag").count(), 0);
+  await page.evaluate(() => {
+    S.history.push({date:"2026-09-04", id:"lowerA", name:"Lower A",
+      entries:[{k:"squat", name:"Squats", weight:100, reps:[6, 6, 6]}]});
+    save(); render();
+  });
+  eq("prompt after four", await page.textContent(".card.nag h2"), "Time for a backup");
+  const [nagDl] = await Promise.all([page.waitForEvent("download"), page.click("#nagbk")]);
+  check("prompt saves a backup file", /^barload-backup-\d{4}-\d{2}-\d{2}\.json$/.test(nagDl.suggestedFilename()), nagDl.suggestedFilename());
+  eq("prompt clears once backed up", await page.locator(".card.nag").count(), 0);
+  await tapTab(page, "more");
+  const [csvOnly] = await Promise.all([page.waitForEvent("download"), page.click("#csv")]);
+  await csvOnly.path();
+  eq("a CSV export does not count as a backup", await page.evaluate(() => {
+    S.history.push({date:"2026-09-05", id:"lowerA", name:"Lower A", entries:[]});
+    return sinceBackup();
+  }), 1);
+  await page.close();
+
+  page = await newPage();
+  await page.addInitScript(() => {
+    Object.defineProperty(Storage.prototype, "setItem", {value(){ throw new Error("blocked"); }});
+  });
+  await page.goto(base, {waitUntil:"networkidle"});
+  eq("blocked storage is called out", await page.textContent(".card.alert h2"), "Nothing is being saved");
+  await tapTab(page, "more");
+  check("the More card warns too", (await page.textContent(".card.alert")).includes("refusing to store"));
   await page.close();
 
   console.log("\nMigration from v1");
