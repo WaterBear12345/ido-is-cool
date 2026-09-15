@@ -37,7 +37,9 @@ body{
   background:var(--ground); color:var(--ink);
   font:400 16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
-  padding-bottom:calc(66px + var(--pad-b));
+  min-height:100vh; min-height:100dvh;      /* dvh keeps it honest as iOS chrome moves */
+  display:flex; flex-direction:column;
+  overscroll-behavior-y:none;               /* no rubber-band that drags the bar off the edge */
 }
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select{font:inherit;color:inherit}
@@ -52,7 +54,7 @@ header{
 header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
 header .sub{margin-top:2px;font-size:13px;color:var(--head-sub)}
 
-main{padding:14px 12px 24px;max-width:640px;margin:0 auto}
+main{flex:1 0 auto;width:100%;padding:14px 12px 24px;max-width:640px;margin:0 auto}
 main > *{scroll-margin-top:84px;scroll-margin-bottom:96px}
 
 /* ── week strip ───────────────────────────────────────── */
@@ -140,7 +142,7 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:96px}
 .finish button[disabled]{background:var(--hair);color:var(--steel)}
 
 /* ── tabs ─────────────────────────────────────────────── */
-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+nav{position:sticky;bottom:0;z-index:30;display:flex;
     background:var(--navbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border-top:1px solid var(--hair);padding-bottom:var(--pad-b)}
 nav button{flex:1;padding:10px 4px 11px;font-size:11.5px;font-weight:600;color:var(--steel);
@@ -473,7 +475,8 @@ function toast(msg){
   if (!el){
     el = document.createElement("div");
     el.id = "toast";
-    el.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:88px;z-index:60;"
+    el.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);z-index:60;"
+      + "bottom:calc(78px + env(safe-area-inset-bottom,0px));"
       + "background:#101418;color:#fff;padding:11px 16px;border-radius:11px;font-size:14px;"
       + "max-width:88%;text-align:center;box-shadow:0 6px 22px rgba(0,0,0,.25);transition:opacity .25s;pointer-events:none";
     document.body.appendChild(el);

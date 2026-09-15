@@ -357,6 +357,42 @@ function serve(){
   check("v2 key written", await page.evaluate(() => !!localStorage.getItem("barload.v2")));
   await page.close();
 
+  console.log("\nTab bar sits on the bottom edge");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  const geom = () => page.evaluate(() => {
+    const n = document.querySelector("nav").getBoundingClientRect();
+    const last = [...document.querySelectorAll("main > *")].pop().getBoundingClientRect();
+    return {navBottom:Math.round(n.bottom), navTop:Math.round(n.top), lastBottom:Math.round(last.bottom),
+            bodyBottom:Math.round(document.body.getBoundingClientRect().bottom),
+            vh:window.innerHeight, docH:Math.round(document.documentElement.scrollHeight),
+            scrollable:document.documentElement.scrollHeight > window.innerHeight};
+  });
+  /* the Train tab is the short page that floated the bar on iPhone */
+  let g = await geom();
+  check("Train tab is the short page", !g.scrollable, g);
+  eq("bar reaches the bottom on a short page", g.navBottom, g.vh);
+  eq("the bar ends where the body ends, not where the viewport happens to", g.navBottom, g.bodyBottom);
+  eq("the body fills the viewport, so nothing shows under the bar", g.docH >= g.vh, true);
+  eq("no page background below the bar", await page.evaluate(() => {
+    const n = document.querySelector("nav").getBoundingClientRect();
+    return document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 1) === null
+      || n.bottom >= window.innerHeight;
+  }), true);
+  /* and on a long, scrolling page, at the top and at the very bottom */
+  await tapTab(page, "plan");
+  g = await geom();
+  check("Plan tab is the long page", g.scrollable, g);
+  eq("bar reaches the bottom on a long page", g.navBottom, g.vh);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(120);
+  g = await geom();
+  eq("bar stays on the bottom once scrolled down", g.navBottom, g.vh);
+  eq("still flush with the end of the body", g.navBottom, g.bodyBottom);
+  check("the last card clears the bar instead of hiding behind it", g.lastBottom <= g.navTop + 1,
+        {lastBottom:g.lastBottom, navTop:g.navTop});
+  await page.close();
+
   console.log("\nDark mode and desktop width");
   page = await newPage({colorScheme:"dark"});
   await page.goto(base, {waitUntil:"networkidle"});
