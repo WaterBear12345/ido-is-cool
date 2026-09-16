@@ -42,15 +42,15 @@ function serve(){
   if (shots) fs.mkdirSync(shots, {recursive:true});
   const browser = await chromium.launch();
   const errors = [];
-  const newPage = async (opts = {}) => {
-    const ctx = await browser.newContext({viewport:{width:390, height:844}, deviceScaleFactor:2,
-      isMobile:true, hasTouch:true, acceptDownloads:true, ...opts});
-    const page = await ctx.newPage();
+  const ctxOpts = (opts = {}) => ({viewport:{width:390, height:844}, deviceScaleFactor:2,
+    isMobile:true, hasTouch:true, acceptDownloads:true, ...opts});
+  const attach = page => {
     page.on("pageerror", e => errors.push("pageerror: " + e.message));
     page.on("console", m => { if (m.type() === "error") errors.push("console: " + m.text()); });
     page.on("dialog", d => d.accept());
     return page;
   };
+  const newPage = async (opts = {}) => attach(await (await browser.newContext(ctxOpts(opts))).newPage());
   const S = page => page.evaluate(() => JSON.parse(localStorage.getItem("barload.v2")));
   const shot = (page, name) => shots ? page.screenshot({path: path.join(shots, name + ".png"), fullPage:false}) : null;
   const tapTab = (page, t) => page.click(`nav button[data-tab="${t}"]`);
@@ -453,6 +453,62 @@ function serve(){
   eq("no rest after the last set of the session", await page.locator("#rest").isHidden(), true);
   await page.click("#abandon");
   await page.close();
+
+  console.log("\nScreen wake lock keeps the timer audible");
+  /* Real Chrome and Safari grant the screen wake lock silently on a visible page. The
+     headless shell denies it unless granted over CDP, and that grant lasts only as long
+     as the CDP session that made it stays attached, so the session is held open until
+     this section's browser closes. */
+  const wlBrowser = await chromium.launch();
+  const wlCtx = await wlBrowser.newContext(ctxOpts());
+  const wlCdp = await wlBrowser.newBrowserCDPSession();
+  for (const id of (await wlCdp.send("Target.getBrowserContexts")).browserContextIds)
+    await wlCdp.send("Browser.grantPermissions", {permissions:["wakeLockScreen"], browserContextId:id});
+  page = attach(await wlCtx.newPage());
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => { S.settings.autosave = false; save(); });
+  check("wake lock is supported in this environment", await page.evaluate(() => "wakeLock" in navigator));
+  eq("no lock held before any rest", await page.evaluate(() => wakeLock), null);
+  await page.click('[data-start="upperA"]');
+  await page.click('[data-set="0:0"]'); await page.click('#padKeys button:text-is("8")');
+  await page.waitForFunction(() => wakeLock !== null);
+  eq("starting a rest acquires a screen lock", await page.evaluate(() => wakeLock.type), "screen");
+  await page.click("#restSkip");
+  eq("skip releases it", await page.evaluate(() => wakeLock), null);
+  await page.click('[data-set="0:1"]'); await page.click('#padKeys button:text-is("8")');
+  await page.waitForFunction(() => wakeLock !== null);
+  await page.evaluate(() => { S.live.rest.end = Date.now() - 200; save(); tick(); });
+  await page.waitForTimeout(300);
+  eq("the lock is released once the rest ends on its own", await page.evaluate(() => wakeLock), null);
+  await page.click('[data-set="0:2"]'); await page.click('#padKeys button:text-is("8")');
+  await page.waitForFunction(() => wakeLock !== null);
+  eq("beep vibrates the phone", await page.evaluate(() => {
+    let called = null;
+    navigator.vibrate = p => { called = p; return true; };
+    S.live.rest.end = Date.now() - 200; save(); tick();
+    return called;
+  }), [200, 80, 200]);
+  await page.click("#restPlus");                       /* +15 after Go: running again */
+  await page.waitForFunction(() => wakeLock !== null);
+  eq("extending a finished rest takes the lock again", await page.evaluate(() => wakeLock.type), "screen");
+  /* When the page hides, the OS releases the sentinel itself. Do that release, prove the
+     listener noticed, then bring the page back and prove the lock comes back with it. */
+  await page.evaluate(async () => {
+    Object.defineProperty(document, "hidden", {value:true, configurable:true});
+    document.dispatchEvent(new Event("visibilitychange"));
+    await wakeLock.release();
+  });
+  await page.waitForFunction(() => wakeLock === null);
+  eq("the release listener clears the reference", await page.evaluate(() => wakeLock), null);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {value:false, configurable:true});
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.waitForFunction(() => wakeLock !== null);
+  eq("coming back into view re-acquires the lock while a rest is still running", await page.evaluate(() => wakeLock.type), "screen");
+  await page.evaluate(() => { delete document.hidden; });
+  await page.click("#abandon");
+  await wlBrowser.close();
 
   console.log("\nTab bar sits on the bottom edge");
   page = await newPage();

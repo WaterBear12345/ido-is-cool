@@ -39,10 +39,16 @@ when something was logged that day, blue for today and red for a missed day. Sta
 session, tap an exercise, tap a set, tap a rep count. The pad moves to the next set by
 itself. Barbell lifts show which plates to load per side in competition colours.
 Logging a set starts a rest timer in the tab bar for that exercise's rest time, with
-−15 and +15 to adjust the one running and Skip to clear it. It keeps counting while
-the phone is locked and beeps when it ends. Under the sets, "− set" and "+ set" change
-how many sets you do this time without touching the plan. Finish and save advances
-every weight that earned it.
+−15 and +15 to adjust the one running and Skip to clear it. It beeps and vibrates when
+it ends. While a rest is running the app asks the phone not to auto-lock from sitting
+idle, because both the beep and the vibration are silenced the moment the screen goes
+off; the count itself carries on regardless and is correct when you look again.
+Pressing the side button still locks the phone, and there is no way for a web page to
+make a locked phone buzz without a server sending it a push, which this has not got.
+Vibration never fires on an iPhone in any browser, since Apple has not built the API
+into iOS; the beep does. Under the sets, "− set" and "+ set" change how many sets you
+do this time without touching the plan. Finish and save advances every weight that
+earned it.
 
 **Plan.** The programme is editable in the app. Rename sessions, move them between days,
 add or remove sessions, and for each exercise change the sets, rep range, increment,

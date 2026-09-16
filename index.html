@@ -572,7 +572,22 @@ function finishSession(){
 /* ── rest timer ────────────────────────────────────────────────────────────
    State lives on S.live.rest as an end timestamp, so backgrounding the app or
    reloading it shows the true time left rather than a frozen count. */
-let tickT = null, audio = null;
+let tickT = null, audio = null, wakeLock = null;
+/* Keeping the screen on is what makes the beep and the vibration reliable: both
+   Safari and Chrome suspend a page's JavaScript once the screen locks, whether that
+   lock was automatic (idle timeout) or the power button. Wake Lock only prevents the
+   automatic one, which is what actually happens mid-rest when nobody is touching the
+   phone, so it covers the case that matters without needing a page reload to notice. */
+async function acquireWake(){
+  try {
+    if (wakeLock || !("wakeLock" in navigator) || document.hidden) return;
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } catch (e) { wakeLock = null; }
+}
+function releaseWake(){
+  if (wakeLock){ const w = wakeLock; wakeLock = null; w.release().catch(() => {}); }
+}
 function ensureAudio(){
   try {
     if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -597,7 +612,7 @@ function beep(){
 function startRest(x){
   const e = liveDef(x), secs = e.rest > 0 ? e.rest : 75;
   S.live.rest = {name:e.name, end:Date.now() + secs * 1000, total:secs, done:false};
-  save(); tick();
+  save(); tick(); acquireWake();
 }
 function stopRest(){
   if (S.live && S.live.rest){ S.live.rest = null; save(); }
@@ -608,11 +623,12 @@ function nudgeRest(d){
   if (!R) return;
   R.end = Math.max(Date.now(), R.end + d * 1000); R.done = false;
   save(); tick();
+  if (R.end > Date.now()) acquireWake();
 }
 function tick(){
   clearTimeout(tickT);
   const el = document.getElementById("rest"), R = S.live && S.live.rest;
-  if (!R){ el.classList.add("hide"); return; }
+  if (!R){ el.classList.add("hide"); releaseWake(); return; }
   const left = Math.ceil((R.end - Date.now()) / 1000);
   el.classList.remove("hide");
   document.getElementById("restName").textContent = R.name;
@@ -620,17 +636,21 @@ function tick(){
     el.classList.remove("over");
     document.getElementById("restTime").textContent = mmss(left);
   } else {
-    if (Date.now() - R.end > 12000){ S.live.rest = null; save(); el.classList.add("hide"); return; }
+    if (Date.now() - R.end > 12000){ S.live.rest = null; save(); el.classList.add("hide"); releaseWake(); return; }
     el.classList.add("over");
     document.getElementById("restTime").textContent = "Go";
-    if (!R.done){ R.done = true; save(); beep(); }
+    if (!R.done){ R.done = true; save(); beep(); releaseWake(); }
   }
   tickT = setTimeout(tick, 250);
 }
 document.getElementById("restMinus").onclick = () => { ensureAudio(); nudgeRest(-15); };
 document.getElementById("restPlus").onclick = () => { ensureAudio(); nudgeRest(15); };
 document.getElementById("restSkip").onclick = stopRest;
-document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  tick();
+  if (S.live && S.live.rest) acquireWake();   /* the OS drops the lock whenever the page hides */
+});
 
 /* ── rep pad ───────────────────────────────────────────────────────────── */
 let padCtx = null;
@@ -1257,6 +1277,11 @@ function moreView(){
   <div class="card"><h2>Rest timer</h2>
     <p>Starts on its own after every set you log, for as long as that exercise's rest time in Plan.
        −15 and +15 adjust the one that is running; Skip clears it.</p>
+    <p>While a rest is running the phone is asked not to auto-lock from sitting idle, which is
+       what a screen normally does mid-rest. That keeps the beep and the vibration reliable,
+       since both are silenced the moment the screen actually locks. Pressing the side button
+       yourself still locks it and silences them; vibration also never fires on an iPhone in any
+       browser, since Apple has not built it into iOS.</p>
     <label class="tgl"><input type="checkbox" id="snd"${S.settings.sound ? " checked" : ""}>
       Beep when a rest ends</label>
   </div>
