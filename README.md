@@ -38,11 +38,15 @@ is overdue. Each day shows the session scheduled for it, a green dot
 when something was logged that day, blue for today and red for a missed day. Start the
 session, tap an exercise, tap a set, tap a rep count. The pad moves to the next set by
 itself. Barbell lifts show which plates to load per side in competition colours.
-Finish and save advances every weight that earned it.
+Logging a set starts a rest timer in the tab bar for that exercise's rest time, with
+−15 and +15 to adjust the one running and Skip to clear it. It keeps counting while
+the phone is locked and beeps when it ends. Under the sets, "− set" and "+ set" change
+how many sets you do this time without touching the plan. Finish and save advances
+every weight that earned it.
 
 **Plan.** The programme is editable in the app. Rename sessions, move them between days,
 add or remove sessions, and for each exercise change the sets, rep range, increment,
-current weight and equipment type. Reorder with the arrows. "Add exercise" can either
+rest between sets, current weight and equipment type. Reorder with the arrows. "Add exercise" can either
 create a new exercise or pick an existing one, which shares its weight with the other
 session it is in. That is how linking works: low rows and cable crunches are shared by
 default and climb twice a week. Squats, leg curls, calf raises and tricep pushdowns are
@@ -51,11 +55,13 @@ repeated on separate weights because their rep ranges differ.
 **Progress.** Current weight and gain since the start for every exercise, with a
 sparkline of recent sessions. Tap a row for its last six sessions. Three sessions at one
 weight with no rep improvement shows a stall note with a suggested reset weight. Below
-that, every logged session with its sets, and the option to delete one.
+that, every logged session with its sets, and the option to delete one. Tapping a
+session in the Recent list on Train lands there too. Deleting a session also undoes any
+weight increase it caused, as long as nothing later has been lifted at the new weight.
 
 **More.** Where the log is kept and when it was last backed up, CSV export, full JSON
-backup, restore from a file, the dated backup after every session, the programme start
-date for the week counter, and a full reset.
+backup, restore from a file, the dated backup after every session, the beep at the end
+of a rest, the programme start date for the week counter, and a full reset.
 
 ## How the weights move
 
@@ -106,7 +112,8 @@ everything including the programme.
 
 The defaults are in `index.html` in the `DEFAULT_EX` and `DEFAULT_SESSIONS` blocks near
 the top of the script. `lo` and `hi` are the rep range, `inc` is the weight jump,
-`start` is the starting weight, `kind` is `bar`, `db` or `machine`. Days run 0 for
+`start` is the starting weight, `kind` is `bar`, `db` or `machine`, and `rest` is the
+seconds between sets, set in `DEFAULT_REST` with 75 for anything not listed. Days run 0 for
 Monday to 6 for Sunday, so Upper B is day 5. Two sessions referencing the same key share a weight.
 Changes there only apply to fresh installs or after "Reset programme" in Plan.
 
@@ -115,7 +122,8 @@ Changes there only apply to fresh installs or after "Reset programme" in Plan.
 `test/e2e.cjs` drives the real page in headless Chromium: plate maths, the progression
 rule including incomplete and bottom-of-range sessions, shared versus separate weights,
 the planner, migration from the old storage format, export and restore, the backup
-prompt, and the blocked-storage warning.
+prompt, the blocked-storage warning, the rest timer, mid-workout set changes, and
+deleting a session with its weight rolled back.
 
 ```
 npm install playwright

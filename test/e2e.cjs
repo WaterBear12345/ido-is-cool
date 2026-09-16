@@ -129,7 +129,7 @@ function serve(){
   await page.click('[data-start="upperB"]');
   const lowB = page.locator(".ex", {hasText:"Low rows"});
   eq("shared weight visible in Upper B", await lowB.locator(".ex-kg").textContent(), "72.5kg");
-  eq("Upper B low rows has 3 sets", await lowB.locator(".ex-name span").textContent(), "3 sets, 8–10 reps");
+  eq("Upper B low rows has 3 sets", await lowB.locator(".ex-name span").textContent(), "3 sets, 8–10 reps · rest 1:30");
   await page.click("#abandon");
   eq("discard clears live", (await S(page)).live, null);
 
@@ -189,7 +189,7 @@ function serve(){
   const added = st.prog.sessions.upperB.plan[st.prog.sessions.upperB.plan.length - 1];
   const nid = added[0];
   eq("new exercise appended with 3 sets", [nid.startsWith("overhead"), added[1]], [true, 3]);
-  eq("new exercise definition", st.prog.ex[nid], {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine"});
+  eq("new exercise definition", st.prog.ex[nid], {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90});
   eq("new exercise weight", st.weights[nid], 20);
   check("plan sub counts the new sets", /58 working sets/.test(await page.textContent("#hSub")));
 
@@ -355,6 +355,103 @@ function serve(){
   eq("v1 history carried over with names", [st.history.length, st.history[0].entries[0].name, st.history[0].name], [1, "Bench press", "Upper A"]);
   eq("v1 gets the default programme", st.prog.order, ["lowerA", "upperA", "lowerB", "upperB"]);
   check("v2 key written", await page.evaluate(() => !!localStorage.getItem("barload.v2")));
+  await page.close();
+
+  console.log("\nRest timer, set count mid-workout, deleting a logged session");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => { S.settings.autosave = false; save(); });
+  eq("rest defaults by exercise", await page.evaluate(() =>
+    [S.prog.ex.bench.rest, S.prog.ex.squat.rest, S.prog.ex.flies.rest, S.prog.ex.crunch.rest]), [150, 180, 75, 60]);
+  eq("timer hidden when idle", await page.locator("#rest").isHidden(), true);
+  await page.click('[data-start="upperA"]');
+  check("live sub-line shows the rest", (await page.locator(".ex-name span").first().textContent()).includes("rest 2:30"));
+  await page.click('[data-set="0:0"]');
+  await page.click('#padKeys button:text-is("8")');
+  eq("pad closes after a set", await page.locator(".pad.on").count(), 0);
+  eq("timer starts with that exercise's rest", await page.textContent("#restTime"), "2:30");
+  eq("timer names the exercise", await page.textContent("#restName"), "Bench press");
+  eq("timer state is stored with the session", await page.evaluate(() => S.live.rest.total), 150);
+  await page.click("#restPlus");
+  eq("+15", await page.textContent("#restTime"), "2:45");
+  await page.click("#restMinus"); await page.click("#restMinus");
+  eq("-15 twice", await page.textContent("#restTime"), "2:15");
+  await page.reload({waitUntil:"networkidle"});
+  check("timer survives a reload", /^2:1\d$/.test(await page.textContent("#restTime")), await page.textContent("#restTime"));
+  await page.evaluate(() => { S.live.rest.end = Date.now() - 500; save(); tick(); });
+  eq("shows Go when it ends", await page.textContent("#restTime"), "Go");
+  eq("beep recorded as done", await page.evaluate(() => S.live.rest.done), true);
+  await page.click("#restSkip");
+  eq("skip clears it", await page.locator("#rest").isHidden(), true);
+
+  await page.click('[data-nset="0:1"]');
+  eq("plus adds a fourth set", await page.locator('[data-set^="0:"]').count(), 4);
+  check("sub-line follows", (await page.locator(".ex-name span").first().textContent()).startsWith("4 sets"));
+  await page.click('[data-nset="0:-1"]'); await page.click('[data-nset="0:-1"]'); await page.click('[data-nset="0:-1"]');
+  eq("minus stops at one set", await page.locator('[data-set^="0:"]').count(), 1);
+  check("minus disabled at one", await page.locator('[data-nset="0:-1"]').isDisabled());
+  eq("the logged rep survived the trims", await page.evaluate(() => S.live.log[0].reps), [8]);
+  await page.click('[data-nset="0:1"]');
+  await logSets(page, 0, [null, 8]);
+  eq("two sets at the top count as top of range", await page.evaluate(() => hitTop(S.live.log[0])), true);
+  await page.click("#fin");
+  st = await S(page);
+  eq("history stores the two sets actually done", st.history[0].entries[0].reps, [8, 8]);
+  eq("bench raised", st.weights.bench, 62.5);
+  eq("the plan still says three sets", st.prog.sessions.upperA.plan[0][1], 3);
+  eq("timer cleared on finish", await page.locator("#rest").isHidden(), true);
+
+  await page.click('[data-hist="0"]');
+  eq("Recent row opens Progress on that session", await page.textContent("#hTitle"), "Progress");
+  eq("with its delete button showing", await page.locator('[data-delh="0"]').count(), 1);
+  await page.click('[data-delh="0"]');
+  st = await S(page);
+  eq("session gone", st.history.length, 0);
+  eq("the raise it caused is undone", st.weights.bench, 60);
+  await page.evaluate(() => {
+    const mk = (date, w, reps) => ({date, id:"upperA", name:"Upper A", entries:[{k:"bench", name:"Bench press", weight:w, reps}]});
+    S.history = [mk("2026-09-15", 62.5, [6, 6, 6]), mk("2026-09-08", 60, [8, 8, 8])];
+    S.weights.bench = 62.5; save(); openHist = 1;
+  });
+  await tapTab(page, "progress");
+  await page.click('[data-delh="1"]');
+  st = await S(page);
+  eq("older session deleted", st.history.length, 1);
+  eq("weight kept because a later session lifted it", st.weights.bench, 62.5);
+
+  await tapTab(page, "plan");
+  await page.click('[data-edit="upperA:0"]');
+  eq("rest select shows the current value", await page.inputValue('[data-f="rest"]'), "150");
+  await page.selectOption('[data-f="rest"]', "120");
+  await page.click(".edit [data-save]");
+  eq("rest saved", await page.evaluate(() => S.prog.ex.bench.rest), 120);
+  check("row label shows it", (await page.locator('[data-edit="upperA:0"] .nm span').textContent()).includes("2:00 rest"));
+  await page.locator(".sess").nth(1).locator("[data-add]").click();
+  await page.fill('[data-f="name"]', "Dips");
+  await page.selectOption('[data-f="rest"]', "180");
+  await page.click(".edit [data-save]");
+  eq("a new exercise keeps its rest", await page.evaluate(() => Object.values(S.prog.ex).find(e => e.name === "Dips").rest), 180);
+
+  await tapTab(page, "more");
+  await page.uncheck("#snd");
+  eq("beep toggle persists", await page.evaluate(() => S.settings.sound), false);
+  await tapTab(page, "train");
+  await page.click('[data-start="upperA"]');
+  await page.click('[data-set="0:0"]'); await page.click('#padKeys button:text-is("8")');
+  eq("a new session uses the edited rest", await page.textContent("#restTime"), "2:00");
+  await page.click("#abandon");
+  await page.click('[data-start="lowerA"]');
+  await page.evaluate(() => {
+    S.live.log.forEach(x => x.reps.fill(8));
+    const last = S.live.log[S.live.log.length - 1]; last.reps[last.reps.length - 1] = null;
+    save(); render();
+  });
+  const li = await page.evaluate(() => S.live.log.length - 1);
+  const si = await page.evaluate(() => S.live.log[S.live.log.length - 1].reps.length - 1);
+  await page.click(`[data-open="${li}"]`);
+  await page.click(`[data-set="${li}:${si}"]`); await page.click('#padKeys button:text-is("15")');
+  eq("no rest after the last set of the session", await page.locator("#rest").isHidden(), true);
+  await page.click("#abandon");
   await page.close();
 
   console.log("\nTab bar sits on the bottom edge");
