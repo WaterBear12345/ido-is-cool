@@ -64,7 +64,14 @@ add or remove sessions, and for each exercise change the sets, rep range, increm
 rest between sets, current weight, muscle group and equipment. Equipment is one row:
 barbell, dumbbell, machine, cable or free weight, the last for things like Russian
 twists with a plate or kettlebell. Picking barbell asks whether the bar is 20 or 25 kg. A new exercise guesses its muscle group from its
-name until you pick one. Reorder with the arrows. "Add exercise" can either
+name until you pick one.
+
+Plan changes made during a workout carry straight into it. Adding, removing or
+reordering exercises, or changing a set count, updates the workout in progress, and
+Plan marks that session "In progress". Nothing already logged is lost: a set count
+never drops below the last logged set, and an exercise removed after you logged sets
+on it stays in the workout, at the end. A "+ set" made during the workout is kept
+unless that exercise's set count is changed in Plan. Reorder with the arrows. "Add exercise" can either
 create a new exercise or pick an existing one, which shares its weight with the other
 session it is in. That is how linking works: low rows and cable crunches are shared by
 default and climb twice a week. Squats, leg curls, calf raises and tricep pushdowns are

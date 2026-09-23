@@ -314,6 +314,7 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .sess-head .row{display:flex;align-items:center;gap:10px}
 .sess-head input{flex:1;min-width:0;font-size:16px;font-weight:600;background:none;border:0;
                  border-bottom:1px dashed var(--hair);padding:2px 0;border-radius:0}
+.nowtag{font-size:11.5px;font-weight:700;color:var(--ok);background:var(--hit);padding:3px 8px;border-radius:99px;white-space:nowrap}
 .sess-head .cnt{font-size:13px;color:var(--steel);white-space:nowrap}
 .sess-head .del{font-size:12.5px;color:var(--p25);font-weight:600;padding:4px 0 4px 6px}
 .days{display:flex;gap:5px;margin-top:10px}
@@ -707,18 +708,48 @@ function toast(msg){
 }
 
 /* ── live session ──────────────────────────────────────────────────────── */
+/* planN is the plan's set count this entry was built from, so a later change in Plan can
+   be told apart from a "+ set" made during the workout. */
+function liveEntry(k, n){
+  const e = S.prog.ex[k];
+  return {k, name:e.name, lo:e.lo, hi:e.hi, inc:e.inc, kind:e.kind, rest:e.rest, group:e.group, barKg:e.barKg,
+          weight:S.weights[k], reps:new Array(n).fill(null), planN:n};
+}
 function startSession(id){
   const s = S.prog.sessions[id];
   if (!s || !s.plan.length){ toast("That session has no exercises yet. Add some in Plan."); return; }
-  S.live = {
-    id, date: todayISO(), open: 0,
-    log: s.plan.map(([k, n]) => {
-      const e = S.prog.ex[k];
-      return {k, name:e.name, lo:e.lo, hi:e.hi, inc:e.inc, kind:e.kind, rest:e.rest, group:e.group, barKg:e.barKg,
-              weight:S.weights[k], reps:new Array(n).fill(null)};
-    })
-  };
+  S.live = {id, date: todayISO(), open: 0, log: s.plan.map(([k, n]) => liveEntry(k, n))};
   save(); go("train");
+}
+/* Plan edits reach the workout in progress. Exercises and their order follow the plan, a
+   set count changed in Plan applies, and nothing already logged is ever dropped: a set
+   count never cuts below the last logged set, and a removed exercise with logged sets
+   stays, at the end. Returns whether the workout changed. */
+function syncLive(){
+  const L = S.live, s = L && S.prog.sessions[L.id];
+  if (!s) return false;
+  const shape = log => JSON.stringify(log.map(x => [x.k, x.reps.length]));
+  const before = shape(L.log), openX = L.log[L.open];
+  const pool = new Map(L.log.map(x => [x.k, x])), log = [];
+  for (const [k, n] of s.plan){
+    let x = pool.get(k);
+    if (x){
+      pool.delete(k);
+      if (x.planN === undefined) x.planN = x.reps.length;
+      if (x.planN !== n){
+        const last = x.reps.reduce((a, r, j) => r !== null ? j : a, -1), len = Math.max(n, last + 1);
+        x.reps = x.reps.slice(0, len);
+        while (x.reps.length < len) x.reps.push(null);
+        x.planN = n;
+      }
+    } else x = liveEntry(k, n);
+    log.push(x);
+  }
+  for (const x of pool.values()) if (x.reps.some(r => r !== null)) log.push(x);
+  L.log = log;
+  L.open = openX ? log.indexOf(openX) : -1;
+  rrOpen = -1;
+  return shape(log) !== before;
 }
 /* The current programme definition wins; the snapshot covers an exercise deleted mid-session. */
 const liveDef = x => S.prog.ex[x.k]
@@ -1268,6 +1299,7 @@ function planView(){
     h += `<div class="sess">
       <div class="sess-head">
         <div class="row"><input data-rename="${id}" value="${esc(s.name)}" aria-label="Session name" maxlength="24">
+          ${S.live && S.live.id === id ? `<span class="nowtag">In progress</span>` : ""}
           <span class="cnt">${setsOf(s)} sets</span>
           ${S.prog.order.length > 1 ? `<button class="del" data-delsess="${id}">Delete</button>` : ""}</div>
         <div class="days">${DAYS.map((d, i) =>
@@ -1348,6 +1380,13 @@ function addForm(id){
 }
 
 function wirePlan(){
+  /* Save a plan change, carry it into the running workout, and say so when it did. */
+  const planned = (msg = "") => {
+    const hit = syncLive();
+    save();
+    const note = hit ? "Your workout in progress is updated too." : "";
+    if (msg || note) toast([msg, note].filter(Boolean).join(" "));
+  };
   const v = document.getElementById("view");
   v.querySelectorAll("[data-rename]").forEach(inp => inp.onchange = () => {
     const nm = inp.value.trim();
@@ -1368,7 +1407,9 @@ function wirePlan(){
   });
   v.querySelectorAll("[data-delsess]").forEach(b => b.onclick = () => {
     const id = b.dataset.delsess, s = S.prog.sessions[id];
-    if (!confirm(`Delete ${s.name}? Logged sessions stay in your history.`)) return;
+    const running = S.live && S.live.id === id;
+    if (!confirm(`Delete ${s.name}? Logged sessions stay in your history.`
+      + (running ? " It is also the workout in progress, which will be discarded." : ""))) return;
     S.prog.order = S.prog.order.filter(x => x !== id);
     delete S.prog.sessions[id];
     if (S.live && S.live.id === id) S.live = null;
@@ -1399,7 +1440,7 @@ function wirePlan(){
     const old = S.weights;
     S.prog = defaultProg();
     for (const k in S.prog.ex) if (typeof old[k] !== "number") S.weights[k] = S.prog.ex[k].start;
-    edit = null; save(); toast("Programme reset."); render();
+    edit = null; planned("Programme reset."); render();
   };
 
   const form = v.querySelector(".edit");
@@ -1410,7 +1451,7 @@ function wirePlan(){
   form.querySelectorAll("[data-sets]").forEach(b => b.onclick = () => {
     const d = +b.dataset.sets;
     let n;
-    if (edit.i >= 0){ n = s.plan[edit.i][1] = Math.min(MAXSETS, Math.max(1, s.plan[edit.i][1] + d)); save(); }
+    if (edit.i >= 0){ n = s.plan[edit.i][1] = Math.min(MAXSETS, Math.max(1, s.plan[edit.i][1] + d)); planned(); }
     else n = edit.n = Math.min(MAXSETS, Math.max(1, edit.n + d));
     b.parentElement.querySelector("b").textContent = n;
     if (edit.i >= 0){
@@ -1424,14 +1465,14 @@ function wirePlan(){
     const j = edit.i + (+b.dataset.move);
     if (j < 0 || j >= s.plan.length) return;
     [s.plan[edit.i], s.plan[j]] = [s.plan[j], s.plan[edit.i]];
-    edit.i = j; save(); render();
+    edit.i = j; planned(); render();
   });
   const rm = form.querySelector("[data-remove]");
   if (rm) rm.onclick = () => {
     const k = s.plan[edit.i][0];
     if (!confirm(`Remove ${S.prog.ex[k].name} from ${s.name}?`)) return;
     s.plan.splice(edit.i, 1);
-    edit = null; save(); render();
+    edit = null; planned(); render();
   };
   const cancel = form.querySelector("[data-cancel]");
   if (cancel) cancel.onclick = () => { edit = null; render(); };
@@ -1456,7 +1497,7 @@ function wirePlan(){
   form.querySelector("[data-save]").onclick = () => {
     if (edit.i === -1 && src && src.value){
       s.plan.push([src.value, edit.n]);
-      edit = null; save(); toast("Added."); render(); return;
+      edit = null; planned("Added."); render(); return;
     }
     const pick = n => (form.querySelector(`[name="${n}"]:checked`) || {}).value;
     const name = get("name").value.trim(), lo = +get("lo").value, hi = +get("hi").value,
@@ -1483,7 +1524,7 @@ function wirePlan(){
       S.weights[k] = w;
       s.plan.push([k, edit.n]);
     }
-    edit = null; save(); toast("Saved."); render();
+    edit = null; planned("Saved."); render();
   };
 }
 

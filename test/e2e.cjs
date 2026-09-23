@@ -639,6 +639,59 @@ function serve(){
   eq("a kind changed by hand afterwards is left alone", await page.evaluate(() => S.prog.ex.pulldown.kind), "machine");
   await page.close();
 
+  console.log("\nPlan changes reach the workout in progress");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => { S.settings.autosave = false; save(); });
+  const shape = () => page.evaluate(() => S.live.log.map(x => [x.k, x.reps.map(r => r ?? 0).join("")]));
+  await page.click('[data-start="upperA"]');
+  await logSets(page, 0, [8, 7]);              /* bench: two of three logged */
+  await dismissGo(page);
+  await logSets(page, 2, [9]);                 /* low rows: one of two logged */
+  await dismissGo(page);
+  await page.click('[data-open="3"]'); await page.click('[data-nset="3:1"]');   /* ohp +1 set, live only */
+  await tapTab(page, "plan");
+  eq("plan marks the running session", await page.locator(".sess").nth(1).locator(".nowtag").textContent(), "In progress");
+  await page.click('[data-edit="upperA:0"]');
+  await page.click(".edit [data-sets='1']");
+  check("the change is announced", (await page.textContent("#toast")).includes("workout in progress is updated"));
+  eq("a set added in Plan appears in the workout, logged sets kept",
+     (await shape())[0], ["bench", "8700"]);
+  await page.click(".edit [data-sets='-1']"); await page.click(".edit [data-sets='-1']"); await page.click(".edit [data-sets='-1']");
+  eq("cutting sets in Plan never drops a logged one", (await shape())[0], ["bench", "87"]);
+  eq("the plan itself says one set", await page.evaluate(() => S.prog.sessions.upperA.plan[0][1]), 1);
+  eq("the live-only extra set on another exercise is untouched", (await shape())[3], ["ohp", "000"]);
+  await page.click('[data-edit="upperA:0"]');
+  await page.click('[data-edit="upperA:1"]');
+  await page.click(".edit [data-remove]");
+  check("an unlogged exercise removed in Plan leaves the workout", !(await shape()).some(([k]) => k === "pulldown"));
+  await page.click('[data-edit="upperA:1"]');                 /* low rows, now second */
+  await page.click(".edit [data-remove]");
+  eq("a removed exercise with logged sets stays, at the end", (await shape()).pop(), ["lowrow", "90"]);
+  await page.click('[data-edit="upperA:3"]');                 /* preacher curls */
+  await page.click(".edit [data-move='-1']");
+  eq("reordering in Plan reorders the workout", (await shape()).map(([k]) => k),
+     ["bench", "ohp", "preacher", "tripushA", "lowrow"]);
+  await page.click('[data-edit="upperA:2"]');
+  await page.locator(".sess").nth(1).locator("[data-add]").click();
+  await page.selectOption('[data-f="src"]', "facepull");
+  await page.click(".edit [data-save]");
+  eq("an exercise added in Plan joins the workout", (await shape())[4], ["facepull", "00"]);
+  eq("at its current weight", await page.evaluate(() => S.live.log[4].weight), 15);
+  const before = JSON.stringify(await shape());
+  await page.locator(".sess").nth(0).locator('[data-edit="lowerA:0"]').click();
+  await page.click(".edit [data-sets='1']");
+  eq("editing a different session leaves the workout alone", JSON.stringify(await shape()), before);
+  await page.click(".edit [data-sets='-1']");
+  await tapTab(page, "train");
+  eq("the Train tab shows the updated workout", await page.locator(".ex").count(), 6);
+  check("with the logged bench sets intact", (await page.locator(".ex").first().textContent()).includes("2 sets"));
+  await page.click("#fin");
+  st = await S(page);
+  eq("finishing records what was done, removed-but-logged included",
+     st.history[0].entries.map(x => [x.k, x.reps.join("/")]), [["bench", "8/7"], ["lowrow", "9/"]]);
+  await page.close();
+
   console.log("\nScreen wake lock keeps the timer audible");
   /* Real Chrome and Safari grant the screen wake lock silently on a visible page. The
      headless shell denies it unless granted over CDP, and that grant lasts only as long
