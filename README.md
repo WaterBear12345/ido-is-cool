@@ -45,8 +45,11 @@ top of the range and starts where your last set ended. Each rep passed gives a h
 tick: a vibration on Android, and on iPhone the system tick that iOS 18 and later play
 for a switch, since iPhone browsers have no vibration API. That tick only fires from
 the finger's own touch, so it follows your finger and stops once the ruler coasts on
-its own. More has a Haptics card with two tests that show whether this phone and
-browser support it at all, and a switch to turn the ruler's ticks off. Every exercise has an icon pairing its equipment with a body figure,
+its own. There are several ways to flip a switch nobody sees and iOS answers only
+some of them, so More has a Haptics card: a real switch to check the phone can tick at
+all, tests A to C for three ways of flipping a hidden one, test D for a real touch on
+an invisible switch, a picker for which way the ruler uses, a strip to drag across to
+check ticking mid-drag, and a switch to turn the ruler's ticks off. Every exercise has an icon pairing its equipment with a body figure,
 front or back, with the muscle it trains filled in. There are fifteen muscles: chest,
 lats, upper back, lower back, quads, adductors, glutes, hamstrings, calves, biceps,
 triceps, shoulders, rear delts, abs and obliques. Each is coloured by its region

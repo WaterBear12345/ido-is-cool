@@ -455,10 +455,47 @@ function serve(){
 
   await tapTab(page, "more");
   eq("More has a haptics check with a real switch", await page.getAttribute("#hapSwitch", "switch"), "");
-  eq("and a button that fires the same tick the ruler uses", await page.evaluate(() => {
-    let n = 0; const saved = navigator.vibrate; navigator.vibrate = () => { n++; return true; };
-    document.getElementById("hapTest").click(); navigator.vibrate = saved; return n;
-  }), 1);
+  eq("three ways to flip a hidden switch, plus a real one", await page.locator(".haprow button[data-haptest]").allTextContents(), ["A", "B", "C"]);
+  eq("each test flips its own switch the way it says", await page.evaluate(() => {
+    const out = {};
+    for (const m of HAPTIC_MODES){
+      document.querySelector(`[data-haptest="${m}"]`).click();
+      const l = hapticEls[m];
+      out[m] = [l.style.display === "none", l.firstChild.checked];
+    }
+    return out;
+  }), {hidden:[true, true], faint:[false, true], direct:[false, true]});
+  eq("the rendered ones sit on screen, all but invisible", await page.evaluate(() => {
+    const r = hapticEls.faint.getBoundingClientRect(); return [r.width > 0, getComputedStyle(hapticEls.faint).opacity];
+  }), [true, "0.011"]);
+  eq("the ruler defaults to the rendered one", await page.evaluate(() => S.settings.hapticMode), "faint");
+  eq("the picker's hidden inputs stay inside their own options", await page.evaluate(() => {
+    const seg = document.getElementById("hapMode").getBoundingClientRect();
+    return [...document.querySelectorAll('#hapMode input')].every(i => {
+      const r = i.getBoundingClientRect(); return r.top >= seg.top - 1 && r.bottom <= seg.bottom + 1 && r.width < seg.width / 2;
+    });
+  }), true);
+  eq("so nothing on More is covered by them", await page.evaluate(() => {
+    const r = document.getElementById("json").getBoundingClientRect();
+    return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2).id;
+  }), "json");
+  await page.check('#hapMode input[value="direct"]');
+  eq("picking one is saved for the ruler", await page.evaluate(() => {
+    const before = hapticEls.direct.firstChild.checked;
+    const saved = navigator.vibrate; navigator.vibrate = undefined;
+    const tr = document.getElementById("padTrack");
+    switchTick(); navigator.vibrate = saved;
+    return [S.settings.hapticMode, hapticEls.direct.firstChild.checked !== before];
+  }), ["direct", true]);
+  await page.check('#hapMode input[value="faint"]');
+  eq("the drag strip ticks every rep's width of travel", await page.evaluate(() => {
+    const el = document.getElementById("hapStrip"), l = switchEl("faint"); let n = 0;
+    l.firstChild.addEventListener("click", () => n++);
+    const t = x => ({touches:[{clientX:x}]});
+    const fire = (type, x) => { const e = new Event(type); Object.assign(e, t(x)); el.dispatchEvent(e); };
+    fire("touchstart", 100); fire("touchmove", 110); fire("touchmove", 125); fire("touchmove", 150); fire("touchmove", 200);
+    return n;
+  }), 3);
   await page.uncheck("#hap");
   eq("the ruler's haptics toggle persists", await page.evaluate(() => S.settings.haptics), false);
   await page.check("#hap");

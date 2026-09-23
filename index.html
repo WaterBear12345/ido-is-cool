@@ -218,6 +218,16 @@ svg .fp.hot{fill:currentColor}
 .rt.ze::after{right:9px;border-radius:0 2px 2px 0}
 .rpin{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:0;height:0;
       border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:12px solid var(--lit)}
+/* segmented controls outside the Plan form: each option anchors its own invisible input */
+.card .seg label{position:relative;flex:1;text-align:center;margin:0;padding:9px 4px;border-radius:8px;
+     font-size:13.5px;font-weight:600;color:var(--steel)}
+.haprow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.card .haprow button{margin:0}
+.hapd{position:relative;display:block}
+.hapd input{position:absolute;inset:0;width:100%;height:100%;opacity:.011;margin:0;cursor:pointer}
+.hapstrip{margin-top:10px;height:52px;border-radius:12px;background:#0b0e11;color:#5b9cf0;font-size:13.5px;font-weight:600;
+          display:grid;place-items:center;touch-action:pan-y;user-select:none;-webkit-user-select:none;
+          background-image:repeating-linear-gradient(90deg,rgba(91,156,240,.35) 0 2px,transparent 2px 24px)}
 .sr{position:absolute !important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);border:0;white-space:nowrap}
 .padfoot{display:flex;gap:8px;margin-top:8px}
 .padfoot button{flex:1;height:50px;border-radius:13px;background:var(--ground);font-size:15.5px;font-weight:600}
@@ -664,7 +674,7 @@ const defaultProg = () => JSON.parse(JSON.stringify({ex:DEFAULT_EX, sessions:DEF
    server: a static page can be served by GitHub Pages but never written to. A
    dated backup file after each session is what makes the log outlive the phone. */
 let S;
-const DEFAULTS = () => ({autosave:true, sound:true, haptics:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
+const DEFAULTS = () => ({autosave:true, sound:true, haptics:true, hapticMode:"faint", startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
 function blank(){
   const prog = defaultProg(), w = {};
   for (const k in prog.ex) w[k] = prog.ex[k].start;
@@ -1046,18 +1056,30 @@ function vibrateTick(){
   if (!S.settings.haptics || !canVibrate()) return false;
   try { return navigator.vibrate(8) !== false; } catch (e) { return false; }
 }
-function switchTick(){
+/* Ways to flip a switch nobody sees. Which one iOS answers with a tick could not be tested
+   off-device, so the Haptics card in More tries each and the ruler uses the one chosen:
+     hidden  the switch is not rendered at all (display:none), flipped through its label
+     faint   rendered on screen but all but invisible, flipped through its label
+     direct  rendered the same way, flipped by clicking the switch itself */
+const HAPTIC_MODES = ["hidden", "faint", "direct"];
+const hapticEls = {};
+function switchEl(mode){
+  if (hapticEls[mode]) return hapticEls[mode];
+  const l = document.createElement("label"), i = document.createElement("input");
+  l.setAttribute("aria-hidden", "true");
+  l.style.cssText = mode === "hidden" ? "display:none"
+    : "position:fixed;left:0;bottom:0;opacity:.011;pointer-events:none;z-index:0";
+  i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1;
+  l.appendChild(i); document.body.appendChild(l);
+  return (hapticEls[mode] = l);
+}
+function switchTick(mode){
   if (!S.settings.haptics) return;
+  mode = HAPTIC_MODES.includes(mode) ? mode : S.settings.hapticMode;
   try {
-    if (!hapticEl){
-      hapticEl = document.createElement("label");
-      hapticEl.setAttribute("aria-hidden", "true");
-      hapticEl.style.display = "none";
-      const i = document.createElement("input");
-      i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1;
-      hapticEl.appendChild(i); document.body.appendChild(hapticEl);
-    }
-    hapticEl.click();
+    const l = switchEl(mode);
+    hapticEl = l;
+    if (mode === "direct") l.firstChild.click(); else l.click();
   } catch (e) {}
 }
 /* One tick from inside a user event: whichever mechanism this browser has. */
@@ -2088,14 +2110,19 @@ function moreView(){
   </div>
   <div class="card"><h2>Haptics</h2>
     <p>The rep ruler ticks once per rep. Android vibrates. iPhone browsers cannot vibrate, so the
-       ruler borrows the tick iOS plays when a switch is flipped, and that only works in some browsers.
-       Two tests tell which case this phone is in:</p>
+       ruler borrows the tick iOS plays when a switch is flipped, by flipping one you cannot see.
+       There are a few ways to do that and iOS answers only some of them.</p>
     <label class="tgl"><input type="checkbox" switch id="hapSwitch">
-      1. Flip this switch. Feel a tick? Then this browser has haptics at all.</label>
-    <button id="hapTest">2. Tap for a test tick</button>
-    <p class="hint">Feel a tick from the button? Then the app can trigger it.</p>
-    <p class="hint">If the switch ticks but the button does not, the trick is blocked in this browser.
-       If neither ticks, this browser gives no haptics; Safari added to the home screen is worth a try.</p>
+      1. Flip this switch. A tick means this phone and browser can do haptics.</label>
+    <p class="hint" style="margin-top:14px">2. Tap each test and note which ones tick:</p>
+    <div class="haprow">${HAPTIC_MODES.map((m, i) => `<button data-haptest="${m}">${"ABC"[i]}</button>`).join("")}
+      <span class="hapd"><button tabindex="-1" aria-hidden="true">D</button><input type="checkbox" switch id="hapD" aria-label="Test D"></span></div>
+    <p class="hint">D is an invisible real switch under your finger. If only D ticks, iOS gives the tick only
+       for a real touch on a switch, and no app can make the ruler tick while you drag.</p>
+    <p class="hint" style="margin-top:14px">3. Pick the one that ticked, then drag along the strip; it should tick as you go:</p>
+    <div class="seg" id="hapMode">${HAPTIC_MODES.map((m, i) =>
+      `<label><input type="radio" name="hapMode" value="${m}"${S.settings.hapticMode === m ? " checked" : ""}>${"ABC"[i]}</label>`).join("")}</div>
+    <div class="hapstrip" id="hapStrip">Drag your finger along here</div>
     <label class="tgl"><input type="checkbox" id="hap"${S.settings.haptics ? " checked" : ""}>
       Haptic ticks on the rep ruler</label>
   </div>
@@ -2138,9 +2165,17 @@ function wireMore(){
   document.getElementById("auto").onchange = ev => { S.settings.autosave = ev.target.checked; save(); };
   document.getElementById("snd").onchange = ev => { S.settings.sound = ev.target.checked; save(); };
   document.getElementById("hap").onchange = ev => { S.settings.haptics = ev.target.checked; save(); };
-  document.getElementById("hapTest").onclick = () => {
-    const was = S.settings.haptics; S.settings.haptics = true; haptic(); S.settings.haptics = was;
-  };
+  const force = f => { const was = S.settings.haptics; S.settings.haptics = true; f(); S.settings.haptics = was; };
+  document.querySelectorAll("[data-haptest]").forEach(b => b.onclick = () => force(() => switchTick(b.dataset.haptest)));
+  document.querySelectorAll('[name="hapMode"]').forEach(r => r.onchange = () => { S.settings.hapticMode = r.value; save(); });
+  /* the strip ticks every 24 px of finger travel, the ruler's spacing, from touchmove */
+  const strip = document.getElementById("hapStrip");
+  let sx = null;
+  strip.addEventListener("touchstart", ev => { sx = ev.touches[0].clientX; }, {passive:true});
+  strip.addEventListener("touchmove", ev => {
+    const x = ev.touches[0].clientX;
+    if (sx !== null && Math.abs(x - sx) >= SPACING){ sx = x; force(() => switchTick()); }
+  }, {passive:true});
   const fileIn = document.getElementById("file");
   document.getElementById("imp").onclick = () => fileIn.click();
   fileIn.onchange = () => {
