@@ -1374,7 +1374,7 @@ function addForm(id){
       <div class="wide"><label>Exercise</label><select data-f="src"><option value="">New exercise…</option>${others.map(opt).join("")}</select></div>
       ${setsStep(edit.n)}${exFields(fresh, 20, " data-newonly", true)}
     </div>
-    <p class="hint">Picking an existing exercise shares its weight with the other session it is in. Only do that when the rep range is the same in both.</p>
+    <p class="hint" data-existonly hidden>Picking an existing exercise shares its weight with the other session it is in. Only do that when the rep range is the same in both.</p>
     <div class="acts"><button data-cancel>Cancel</button><button class="primary" data-save>Add</button></div>
   </div>`;
 }
@@ -1492,8 +1492,10 @@ function wirePlan(){
     form.querySelectorAll('[name="group"]').forEach(r => { r.checked = r.value === g; });
   };
   const src = get("src");
-  if (src) src.onchange = () =>
+  if (src) src.onchange = () => {
     form.querySelectorAll("[data-newonly]").forEach(el => el.classList.toggle("hide", !!src.value));
+    form.querySelector("[data-existonly]").hidden = !src.value;   /* the sharing note is about existing ones */
+  };
   form.querySelector("[data-save]").onclick = () => {
     if (edit.i === -1 && src && src.value){
       s.plan.push([src.value, edit.n]);

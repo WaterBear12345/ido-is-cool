@@ -223,8 +223,13 @@ function serve(){
   /* share an existing exercise: bench into Lower B */
   const lowerB = page.locator(".sess").nth(2);
   await lowerB.locator("[data-add]").click();
+  check("no sharing note while adding a new exercise", await page.locator(".edit [data-existonly]").isHidden());
   await page.selectOption('[data-f="src"]', "bench");
   check("new-only fields hidden", await page.locator('[data-newonly]').first().isHidden());
+  check("the sharing note appears once an existing exercise is picked", await page.locator(".edit [data-existonly]").isVisible());
+  await page.selectOption('[data-f="src"]', "");
+  check("and goes again when switching back to a new one", await page.locator(".edit [data-existonly]").isHidden());
+  await page.selectOption('[data-f="src"]', "bench");
   await page.click(".edit [data-save]");
   st = await S(page);
   eq("bench shared into Lower B", st.prog.sessions.lowerB.plan[st.prog.sessions.lowerB.plan.length - 1], ["bench", 2]);
