@@ -39,8 +39,12 @@ when something was logged that day, blue for today and red for a missed day. Sta
 session, tap an exercise, tap a set, and drag the slider to the reps you did, then Log set.
 The slider runs from zero to well past the top of the range, so a set short of the
 target is one drag away; it starts where your last set ended and marks the target
-range on its track. Every exercise has an icon pairing its equipment with the muscle
-group it trains, tinted in that group's colour. Every exercise also has a drawing of
+range on its track. Every exercise has an icon pairing its equipment with a body figure,
+front or back, with the muscle it trains filled in. There are fifteen muscles: chest,
+lats, upper back, lower back, quads, adductors, glutes, hamstrings, calves, biceps,
+triceps, shoulders, rear delts, abs and obliques. Each is coloured by its region
+(chest, back, legs, arms, shoulders, core), and small icons show the half of the body
+that matters so the muscle stays legible. Every exercise also has a drawing of
 what to load. Barbells show the loaded bar in competition plate colours with the
 plates per side; tap "25 kg bar" to switch the bar between 20 and 25 kg on the spot.
 Dumbbells show the pair with the weight per hand and in total. Machines show the
@@ -64,7 +68,7 @@ add or remove sessions, and for each exercise change the sets, rep range, increm
 rest between sets, current weight, muscle group and equipment. Equipment is one row:
 barbell, dumbbell, machine, cable or free weight, the last for things like Russian
 twists with a plate or kettlebell. Picking barbell asks whether the bar is 20 or 25 kg. A new exercise guesses its muscle group from its
-name until you pick one.
+name until you pick one. The muscle picker shows all fifteen as full body figures.
 
 Plan changes made during a workout carry straight into it. Adding, removing or
 reordering exercises, or changing a set count, updates the workout in progress, and
@@ -78,8 +82,10 @@ default and climb twice a week. Squats, leg curls, calf raises and tricep pushdo
 repeated on separate weights because their rep ranges differ.
 
 **Progress.** Sessions logged, volume this week and how many weights have gone up, then
-a chart of the volume moved in each of the last twelve sessions. Below that, every
-exercise grouped by muscle, with its current weight, gain since the start and a
+a consistency grid: one square per day, a column per week up to today, darker for more
+kilograms moved, with each square naming its session when tapped. Then a chart of the
+volume moved in each of the last twelve sessions. Below that, every
+exercise grouped by region and labelled with its muscle, with its current weight, gain since the start and a
 sparkline. Tap a row for a chart of its working weight over time and its last six
 sessions; tap or drag across any chart for the values. Three sessions at one
 weight with no rep improvement shows a stall note with a suggested reset weight. Below
@@ -141,7 +147,7 @@ everything including the programme.
 The defaults are in `index.html` in the `DEFAULT_EX` and `DEFAULT_SESSIONS` blocks near
 the top of the script. `lo` and `hi` are the rep range, `inc` is the weight jump,
 `start` is the starting weight, `kind` is `bar`, `db`, `machine`, `cable` or `free`, `barKg` is
-20 or 25 for a barbell, `group` is the muscle group, and `rest` is the seconds between
+20 or 25 for a barbell, `group` is the muscle (one of the fifteen keys in `MUSCLE`), and `rest` is the seconds between
 sets. The defaults for those last three live in `DEFAULT_BAR`, `DEFAULT_GROUP` and
 `DEFAULT_REST`. Squats default to a 25 kg bar. An existing log picks up groups, cable
 and the squat bar once, on first load; anything you change by hand afterwards stays. Days run 0 for

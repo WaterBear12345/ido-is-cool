@@ -24,7 +24,7 @@
   /* muscle groups, fixed order chest back legs arms shoulders core; validated for CVD and contrast */
   --g-chest:#c8102e; --g-back:#0057b8; --g-legs:#009639; --g-arms:#8a4fd8; --g-shoulders:#b98000;
   --g-core:#0094a8; --g-other:#69727d;
-  --go:#0a7f3f; --go2:#12a352;
+  --go:#0a7f3f; --go2:#12a352; --fig:#c3cad3;
   --pad-b:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){
@@ -34,7 +34,7 @@
     --done:#1b2a22; --hit:#1f3a2b; --inrange:#1e2f47; --spark:#3a434d; --navbg:rgba(28,33,39,.94);
     --ok:#4cc27e; --p5:#e6e8eb; --accent:#4d8fe0; --zone:#2c4f80; --wash:rgba(77,143,224,.14);
     --g-chest:#e84a5c; --g-back:#4a8ade; --g-legs:#2aa358; --g-arms:#976fe3; --g-shoulders:#b8871f;
-    --g-core:#189db0; --g-other:#98a2ad;
+    --g-core:#189db0; --g-other:#98a2ad; --fig:#4a5561;
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -94,6 +94,18 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 .ico.sm{height:34px;padding:0 6px;border-radius:10px;gap:4px}
 .ico.sm svg{width:19px;height:19px}
 .ico.sm i{margin:8px 0}
+/* body figures: neutral parts with hairline gaps, the targeted muscle in its group colour */
+.fp{fill:var(--fig);stroke:var(--panel);stroke-width:.9;stroke-linejoin:round}
+svg .fp.hot{fill:currentColor}
+.ico svg.fig{width:auto;height:40px}
+.ico.sm svg.fig{height:34px}
+.mpick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.f .mpick label{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;margin:0;
+     padding:7px 2px 6px;border-radius:11px;background:var(--panel);border:1px solid var(--hair);
+     font-size:11px;font-weight:600;color:var(--ink);line-height:1.15;text-align:center}
+.mpick svg{height:58px;width:auto}
+.mpick label:has(input:checked){box-shadow:inset 0 0 0 2px var(--ink);border-color:var(--ink)}
+.mpick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer}
 .ex-name{flex:1;min-width:0}
 .ex-name b{display:block;font-size:16px;font-weight:600;line-height:1.25}
 .ex-name span{display:block;font-size:13px;color:var(--steel);margin-top:1px}
@@ -296,6 +308,15 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .chart .xh{stroke:var(--steel);stroke-width:1;opacity:0}
 .chart .xh.on{opacity:.6}
 .chart .hit{fill:transparent}
+.cal .day{fill:var(--ground)}
+.cal .l1{fill:var(--accent);fill-opacity:.3}
+.cal .l2{fill:var(--accent);fill-opacity:.52}
+.cal .l3{fill:var(--accent);fill-opacity:.76}
+.cal .l4{fill:var(--accent)}
+.cal .today{stroke:var(--ink);stroke-width:1.5}
+.cal .on{stroke:var(--ink);stroke-width:1.5}
+.calkey{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:11px;color:var(--steel);margin-top:6px}
+.calkey svg{width:auto;height:11px;display:inline}
 .tip{position:absolute;left:0;top:0;pointer-events:none;background:var(--ink);color:var(--ground);border-radius:9px;
      padding:6px 9px;font-size:12px;line-height:1.35;white-space:nowrap;opacity:0;transition:opacity .12s;z-index:2}
 .tip b{display:block;font-size:14px}
@@ -447,15 +468,42 @@ const BARS = [20, 25];
 /* Muscle groups in their fixed colour order. The colour tints an exercise's icon. */
 const GROUPS = {chest:"Chest", back:"Back", legs:"Legs", arms:"Arms", shoulders:"Shoulders", core:"Core"};
 const GROUP_ORDER = Object.keys(GROUPS);
-const gcol = g => `var(--g-${GROUPS[g] ? g : "other"})`;
 const KINDS = [["bar","Barbell"],["db","Dumbbell"],["machine","Machine"],["cable","Cable"],["free","Free wt"]];
 const KIND_NAME = {bar:"Barbell", db:"Dumbbells", machine:"Machine", cable:"Cable", free:"Free weight"};
-/* Guess a group from a name; first match wins, so "leg raise" is core and "leg curl" is legs. */
-const GUESS = [["core",/crunch|plank|\bab|sit.?up|leg raise|hanging|twist|russian|oblique|wood.?chop/i],
-  ["legs",/squat|leg|calf|lunge|rdl|deadlift|hip|glute|hamstring|quad|step.?up/i],
-  ["arms",/curl|tricep|extension|pushdown|dip|skull/i],
-  ["shoulders",/shoulder|lateral|lat raise|face pull|overhead press|ohp|rear delt|shrug|upright/i],
-  ["back",/row|pull|\blat|chin|back/i],
+/* Muscles, each drawn on a front or back figure and coloured by its region. */
+const MUSCLE = {
+  chest:{n:"Chest", r:"chest", v:"front"},
+  lats:{n:"Lats", r:"back", v:"back"}, upperback:{n:"Upper back", r:"back", v:"back"},
+  lowerback:{n:"Lower back", r:"back", v:"back"},
+  quads:{n:"Quads", r:"legs", v:"front"}, adductors:{n:"Adductors", r:"legs", v:"front"},
+  glutes:{n:"Glutes", r:"legs", v:"back"}, hamstrings:{n:"Hamstrings", r:"legs", v:"back"},
+  calves:{n:"Calves", r:"legs", v:"back"},
+  biceps:{n:"Biceps", r:"arms", v:"front"}, triceps:{n:"Triceps", r:"arms", v:"back"},
+  shoulders:{n:"Shoulders", r:"shoulders", v:"front"}, reardelts:{n:"Rear delts", r:"shoulders", v:"back"},
+  abs:{n:"Abs", r:"core", v:"front"}, obliques:{n:"Obliques", r:"core", v:"front"}
+};
+const MUSCLE_ORDER = Object.keys(MUSCLE);
+const REGION_DEFAULT = {chest:"chest", back:"upperback", legs:"quads", arms:"biceps", shoulders:"shoulders", core:"abs"};
+const regionOf = m => MUSCLE[m] ? MUSCLE[m].r : (GROUPS[m] ? m : "other");
+const gcol = g => `var(--g-${regionOf(g)})`;
+const muscleName = m => MUSCLE[m] ? MUSCLE[m].n : "Other";
+/* Guess a muscle from a name; first match wins, so "leg raise" is abs, "leg curl" is
+   hamstrings, "leg extension" is quads and "lat raise" is shoulders. */
+const GUESS = [
+  ["abs",/crunch|plank|\bab|sit.?up|leg raise|hanging/i],
+  ["obliques",/twist|russian|oblique|wood.?chop|side bend/i],
+  ["calves",/calf|calves/i],
+  ["hamstrings",/leg curl|hamstring|rdl|romanian|good.?morning|nordic/i],
+  ["glutes",/glute|hip thrust|bridge/i],
+  ["adductors",/adduct/i],
+  ["lowerback",/back extension|hyperextension|deadlift|superman/i],
+  ["quads",/squat|leg press|lunge|leg extension|quad|step.?up|split|hack/i],
+  ["triceps",/tricep|push.?down|skull|\bdips?\b|overhead ext|french press|close.?grip|kickback/i],
+  ["biceps",/curl|bicep/i],
+  ["reardelts",/face pull|rear delt|reverse fl(y|ies)|reverse pec/i],
+  ["shoulders",/shoulder|lateral|lat raise|overhead press|ohp|arnold|upright|front raise|military/i],
+  ["lats",/pull.?down|pull.?up|\blats?\b|chin|pullover/i],
+  ["upperback",/row|shrug|rhomboid|trap|back/i],
   ["chest",/bench|chest|fl(y|ies)|push.?up|pec|press/i]];
 const guessGroup = name => (GUESS.find(([, re]) => re.test(name || "")) || ["other"])[0];
 /* Equipment glyphs, 24px grid. */
@@ -466,22 +514,52 @@ const ICONS = {
   cable:'<circle cx="12" cy="5" r="2.6"/><path d="M12 7.6V15"/><path d="M8.3 15h7.4l-1.3 5H9.6z"/>',
   free:'<path d="M8.6 10V8.4a3.4 3.4 0 0 1 6.8 0V10"/><path d="M7.2 10.2h9.6a5.8 5.8 0 0 1 .9 9.3H6.3a5.8 5.8 0 0 1 .9-9.3z"/>'
 };
-/* Muscle-group glyphs, same 24px grid. */
-const MUSCLES = {
-  chest:'<path d="M3.5 5.5c2.6 1 5.4 1.5 8.5 1.5s5.9-.5 8.5-1.5"/><path d="M12 8.2c-1.9-1-5.4-1.1-6.8.3-1.3 1.3-1.1 4.9 1 6.6 1.7 1.3 4 1.3 5.8.2z"/><path d="M12 8.2c1.9-1 5.4-1.1 6.8.3 1.3 1.3 1.1 4.9-1 6.6-1.7 1.3-4 1.3-5.8.2z"/>',
-  back:'<path d="M4 5c2.6 1.2 5.2 1.6 8 1.6S17.4 6.2 20 5l-2.6 10.2L14.6 20H9.4l-2.8-4.8z"/><path d="M12 6.6V20"/><path d="M8 11.5c1.4.8 2.7 1.2 4 1.2s2.6-.4 4-1.2"/>',
-  legs:'<path d="M9 2.5v7.2c0 1.4-.6 2.6-1.4 3.6l-.8 1.1c-.6.8-.8 1.7-.6 2.7l.9 4.4"/><path d="M15 2.5v7.2c0 1.4.6 2.6 1.4 3.6l.8 1.1c.6.8.8 1.7.6 2.7l-.9 4.4"/><path d="M9.6 12.6h.1M14.3 12.6h.1"/>',
-  arms:'<path d="M3 16.3c0-1.6 1.3-2.8 2.8-2.8h6.6l2.9-6.6c.4-.9 1.5-1.3 2.4-.9l1.1.5c.9.4 1.3 1.4 1 2.3l-2.5 8.2c-.5 1.6-2 2.6-3.6 2.6H5.8C4.3 19.6 3 18.4 3 16.3z"/><path d="M6.8 13.5c.8-2.3 2.8-3.6 5.1-3.2"/>',
-  shoulders:'<path d="M3.5 20v-4.6C3.5 10.6 7.3 7 12 7s8.5 3.6 8.5 8.4V20"/><path d="M7.5 20v-4.2M16.5 20v-4.2"/><circle cx="12" cy="4" r="1.6"/>',
-  core:'<rect x="6.5" y="3.5" width="11" height="17" rx="3.5"/><path d="M12 3.5v17M6.5 9.2h11M6.5 14.8h11"/>',
-  other:'<circle cx="12" cy="12" r="7.5"/><path d="M12 8.5v7M8.5 12h7"/>'
+/* Body figures on a 60 x 121 grid. Each part is drawn for the left side and mirrored,
+   except those on the centre line; the part named after the target muscle is filled. */
+const HEAD = 'M30 1.5c4.3 0 6.8 3.3 6.8 7.6S34.3 17 30 17s-6.8-3.6-6.8-7.9S25.7 1.5 30 1.5z';
+const ARM_LOW = [["forearms",'M12.6 46.4c1.5.8 3.5.8 4.8-.1l-2.3 14.9c-1.1.6-2.5.6-3.6-.1-.6-5-.2-9.9 1.1-14.7z'],
+  ["hand",'M11.3 62.2c1.3.6 2.6.6 3.7 0l.2 4.2c-.5 1.4-3.6 1.5-4.2.1z']];
+const KNEE = ["knee",'M21 88.9c1.5 1.4 3.6 1.2 4.8-.6l.2 3.4c-1.5 1.1-3.5 1.1-5-.1z'];
+const FOOT = ["foot",'M22.2 114.3h2.8l.6 5.3c-1.2 1-3.8 1-5.6.1z'];
+const UPPER_ARM = 'M12.9 34.2c1-2.2 2.7-4 4.9-5.1l1 3.9-1.2 12.5c-1.4 1-3.4 1-4.9.1-.7-3.9-.6-7.6.2-11.4z';
+const FIG = {
+  front:[["head",HEAD],["neck",'M26.6 15.5h6.8l.8 5.2h-8.4z'],
+    ["shoulders",'M22.4 20.6c-4.7-.4-8.6 2.4-9.3 7.5l.4 5.2c1.7-2.6 4.3-4.6 7.3-5.6l1.6-7.1z'],
+    ["chest",'M23.3 20.7H29.6v12.2c-2.9 1.9-6.5 1.8-8.6-.1-1.3-1.2-1.2-3.6-.8-6.1.4-2.4 1.5-4.6 3.1-6z'],
+    ["biceps",UPPER_ARM], ...ARM_LOW,
+    ["obliques",'M20.3 34.4c1.8 1.4 3.4 1.9 5 2l-.3 18.9-4.7-2.8c-.8-6.1-.9-12.1 0-18.1z'],
+    ["abs",'M25.8 35.3h3.8v20.9h-3.9z'],
+    ["hips",'M20.5 53.4l4.9 3.2h4.2v8.8l-5.1-1.5-4.4-3.9c-.1-2.2.1-4.4.4-6.6z'],
+    ["quads",'M20 60.9l4.4 3.6.9 22.9c-1.1 2.1-3.4 2.4-4.8.8-1.7-9.1-2.1-18.2-.5-27.3z'],
+    ["adductors",'M25 64.5l4.6 1.4v12.2c-.9 3.4-1.9 6.4-3 9.2l-.7-.1z'],
+    KNEE, ["shins",'M21 92.3c1.6 1 3.5 1 5 .1.3 7.1-.1 14.2-1.2 21.2h-2.6c-1.4-7.1-1.8-14.2-1.2-21.3z'], FOOT],
+  back:[["head",HEAD],
+    ["upperback",'M26.6 15.8h3.4v19.6l-3.7-2.3-5.1-10.5c1.9-1 3.7-2.9 5.4-6.8z'],
+    ["reardelts",'M21.4 22.3c-3.8-1.7-7.6.6-8.3 5.8l.4 5.2c1.7-2.6 4.3-4.6 7.3-5.6l.6-5.4z'],
+    ["lats",'M21.9 23.6l4.3 9.8 3.8 2.4v11.2l-5.8 2.9c-2.2-4-3.2-8.2-3.5-12.6-.2-4.7.2-9.3 1.2-13.7z'],
+    ["triceps",UPPER_ARM], ...ARM_LOW,
+    ["lowerback",'M24.4 50.8l5.6-2.8v8.6h-6.7c-.2-2 .2-4 1.1-5.8z'],
+    ["glutes",'M20.6 57.1H30v9.6c-2.6 1.7-6.5 1.9-9.2.2-1-3.3-1.1-6.5-.2-9.8z'],
+    ["hamstrings",'M20.4 68.3c3 1.4 6.6 1.3 9.4-.2l-2.6 19.2c-1.5 2.1-4.6 2.2-6.1.2-1.3-6.4-1.6-12.8-.7-19.2z'],
+    KNEE, ["calves",'M21 92.3c1.6 1 3.5 1 5 .1 1.2 4.1 1.3 8.4.1 12.6l-1.3 8.6h-2.6c-2.3-6.9-2.8-14-1.2-21.3z'], FOOT]
 };
-const icon = (e, cls = "") => {
-  const g = GROUPS[e.group] ? e.group : "other";
-  return `<span class="ico ${cls}" style="color:${gcol(e.group)}" role="img" aria-label="${KIND_NAME[e.kind] || "Machine"}, ${GROUPS[g] || "other"}">`
-    + `<svg class="eq" viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg><i></i>`
-    + `<svg viewBox="0 0 24 24">${MUSCLES[g]}</svg></span>`;
-};
+const CENTRE = new Set(["head", "neck"]);
+const LOWER = new Set(["quads", "adductors", "glutes", "hamstrings", "calves"]);
+/* crop: small icons show just the half of the body that matters, so the muscle is legible. */
+function figure(m, crop){
+  const v = MUSCLE[m] ? MUSCLE[m].v : "front";
+  let h = "";
+  for (const [part, d] of FIG[v]){
+    const c = part === m ? "fp hot" : "fp";
+    h += `<path class="${c}" d="${d}"/>`;
+    if (!CENTRE.has(part)) h += `<path class="${c}" d="${d}" transform="matrix(-1 0 0 1 60 0)"/>`;
+  }
+  const box = !crop ? "8 0 44 121" : LOWER.has(m) ? "8 52 44 69" : "8 0 44 64";
+  return `<svg class="fig" viewBox="${box}" aria-hidden="true">${h}</svg>`;
+}
+const icon = (e, cls = "") =>
+  `<span class="ico ${cls}" style="color:${gcol(e.group)}" role="img" aria-label="${KIND_NAME[e.kind] || "Machine"}, ${muscleName(e.group)}">`
+  + `<svg class="eq" viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg><i></i>${figure(e.group, true)}</span>`;
 
 /* ── default programme, starting weights as of 6 Sep 2026 ──────────────
    kind: "bar" = barbell with plate maths on a barKg bar, "db" = dumbbells (per
@@ -518,15 +596,16 @@ const DEFAULT_EX = {
 /* Rest between sets, in seconds. Compounds get longer; anything not listed is an isolation. */
 const DEFAULT_REST = {squat:180, rdl:150, bench:150, squatback:120, splitsquat:120, incline:120,
                       pulldown:90, lowrow:90, ohp:90, crunch:60};
-const DEFAULT_GROUP = {bench:"chest", incline:"chest", flies:"chest", pulldown:"back", lowrow:"back",
-  ohp:"shoulders", latraise:"shoulders", facepull:"shoulders", tripushA:"arms", tripushB:"arms",
-  preacher:"arms", hammer:"arms", crunch:"core"};
+const DEFAULT_GROUP = {bench:"chest", incline:"chest", flies:"chest", pulldown:"lats", lowrow:"upperback",
+  ohp:"shoulders", latraise:"shoulders", facepull:"reardelts", tripushA:"triceps", tripushB:"triceps",
+  preacher:"biceps", hammer:"biceps", crunch:"abs", squat:"quads", squatback:"quads", splitsquat:"quads",
+  rdl:"hamstrings", legcurlA:"hamstrings", legcurlB:"hamstrings", calfA:"calves", calfB:"calves", hipadd:"adductors"};
 const CABLE = ["pulldown", "lowrow", "facepull", "tripushA", "tripushB", "crunch"];
 const DEFAULT_BAR = {squat:25, squatback:25};      /* the squat rack's bar is 25 kg */
 for (const k in DEFAULT_EX){
   const e = DEFAULT_EX[k];
   e.rest = DEFAULT_REST[k] || 75;
-  e.group = DEFAULT_GROUP[k] || "legs";
+  e.group = DEFAULT_GROUP[k];
   e.barKg = DEFAULT_BAR[k] || BARBELL;
   if (CABLE.includes(k)) e.kind = "cable";
 }
@@ -547,7 +626,7 @@ const defaultProg = () => JSON.parse(JSON.stringify({ex:DEFAULT_EX, sessions:DEF
    server: a static page can be served by GitHub Pages but never written to. A
    dated backup file after each session is what makes the log outlive the phone. */
 let S;
-const DEFAULTS = () => ({autosave:true, sound:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0});
+const DEFAULTS = () => ({autosave:true, sound:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
 function blank(){
   const prog = defaultProg(), w = {};
   for (const k in prog.ex) w[k] = prog.ex[k].start;
@@ -564,6 +643,8 @@ function migrate(o){
     for (const k in n.weights) if (typeof o.weights[k] === "number") n.weights[k] = o.weights[k];
     n.history = o.history; n.live = o.live || null;
   }
+  /* read before the defaults are merged in, or the flag would always look set */
+  const needMuscles = o.v === 2 && !(o.settings && o.settings.muscles === 2);
   n.v = 2;
   n.settings = Object.assign(DEFAULTS(), n.settings || {});
   n.history = Array.isArray(n.history) ? n.history.filter(r => r && Array.isArray(r.entries)) : [];
@@ -580,12 +661,26 @@ function migrate(o){
     if (!e.kind) e.kind = e.bar ? "bar" : (e.db ? "db" : "machine");
     if (!(e.rest > 0)) e.rest = DEFAULT_REST[k] || (e.kind === "bar" ? 150 : 75);
     if (!e.group){                   /* first load after groups existed: fill them in once */
-      e.group = DEFAULT_GROUP[k] || (DEFAULT_EX[k] ? "legs" : guessGroup(e.name));
+      e.group = DEFAULT_GROUP[k] || guessGroup(e.name);
       if (e.kind === "machine" && CABLE.includes(k)) e.kind = "cable";
     }
     if (!BARS.includes(e.barKg)) e.barKg = DEFAULT_BAR[k] || BARBELL;
     if (typeof n.weights[k] !== "number") n.weights[k] = e.start;
   }
+  /* Once: the six broad groups become specific muscles. A default exercise still in its
+     default region takes its default muscle; anything else is guessed from its name within
+     the region it was given, falling back to that region's main muscle. */
+  if (needMuscles){
+    for (const k in n.prog.ex){
+      const e = n.prog.ex[k], was = regionOf(e.group);
+      if (DEFAULT_GROUP[k] && regionOf(DEFAULT_GROUP[k]) === was) e.group = DEFAULT_GROUP[k];
+      else if (!MUSCLE[e.group] || e.group === was){
+        const g = guessGroup(e.name);
+        e.group = regionOf(g) === was ? g : (REGION_DEFAULT[was] || g);
+      }
+    }
+  }
+  n.settings.muscles = 2;
   for (const r of n.history){
     if (!r.name && n.prog.sessions[r.id]) r.name = n.prog.sessions[r.id].name;
     for (const x of r.entries) if (!x.name && n.prog.ex[x.k]) x.name = n.prog.ex[x.k].name;
@@ -1058,7 +1153,7 @@ function pickView(){
   h += `<div class="grp">Or pick a session</div><div class="pick">`;
   for (const id of S.prog.order){
     const s = S.prog.sessions[id];
-    const gs = [...new Set(s.plan.map(([k]) => S.prog.ex[k].group))]
+    const gs = [...new Set(s.plan.map(([k]) => regionOf(S.prog.ex[k].group)))]
       .sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b));
     h += `<button data-start="${id}"><b>${esc(s.name)}</b>
       <span>${setsOf(s)} sets${hasDay(s) ? " · " + DAYFULL[s.day] : ""}</span>
@@ -1333,8 +1428,9 @@ function exFields(e, w, a = "", isNew = false){
   return `
     <div class="wide"${a}><label>Name</label><input data-f="name" value="${esc(e.name || "")}" maxlength="40"
       ${isNew ? 'placeholder="e.g. Overhead extensions"' : ""}></div>
-    <div class="wide"${a}><label>Muscle group</label><div class="chips">${GROUP_ORDER.map(g =>
-      `<label><input type="radio" name="group" value="${g}"${e.group === g ? " checked" : ""}><i style="background:${gcol(g)}"></i>${GROUPS[g]}</label>`).join("")}</div></div>
+    <div class="wide"${a}><label>Muscle</label><div class="mpick">${MUSCLE_ORDER.map(g =>
+      `<label style="color:${gcol(g)}"><input type="radio" name="group" value="${g}"${e.group === g ? " checked" : ""}>`
+      + `${figure(g)}<span style="color:var(--ink)">${MUSCLE[g].n}</span></label>`).join("")}</div></div>
     <div class="wide"${a}><label>Equipment</label><div class="seg eqs">${KINDS.map(([v, l]) =>
       `<label><input type="radio" name="kind" value="${v}"${kind === v ? " checked" : ""}>`
       + `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[v]}</svg>${l}</label>`).join("")}</div></div>
@@ -1619,6 +1715,46 @@ function spark(k){
   const [ex, ey] = pt(ws[n], n);
   return `<svg class="spark" viewBox="0 0 58 24" aria-hidden="true"><path d="${d}"/><circle cx="${ex}" cy="${ey}" r="2.6"/></svg>`;
 }
+/* Consistency: one square per day, weeks as columns ending this week, darker for more
+   volume. One hue, four steps by rank among the days trained, so the heaviest day is
+   always the darkest even with few sessions; empty days stay ground. */
+function consistency(){
+  const W = chartW(), L = 16, cell = 14, gap = 3, step = cell + gap;
+  const weeks = Math.max(8, Math.floor((W - L + gap) / step));
+  const vol = {}, names = {};
+  for (const r of S.history){
+    vol[r.date] = (vol[r.date] || 0) + tonnage(r);
+    (names[r.date] = names[r.date] || []).push(sessName(r));
+  }
+  const vs = [...new Set(Object.values(vol).filter(v => v > 0))].sort((a, b) => a - b);
+  const level = v => !v ? 0 : vs.length < 2 ? 4 : 1 + Math.floor(3 * vs.indexOf(v) / (vs.length - 1));
+  const today = todayISO(), mon = new Date(weekDates()[0] + "T12:00:00");
+  const H = 7 * step - gap + 2;
+  const xs = [], ys = [], tips = [];
+  let cells = "", trained = 0, planned = 0;
+  for (let w = 0; w < weeks; w++){
+    for (let d = 0; d < 7; d++){
+      const dt = new Date(mon); dt.setDate(mon.getDate() - (weeks - 1 - w) * 7 + d);
+      const day = iso(dt);
+      if (day > today) continue;
+      const v = vol[day] || 0, lv = level(v), x = L + w * step, y = 1 + d * step;
+      if (v) trained++;
+      cells += `<rect class="${lv ? "l" + lv : "day"}${day === today ? " today" : ""}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3"/>`;
+      xs.push(x + cell / 2); ys.push(y);
+      tips.push(v ? [`${Math.round(v).toLocaleString()} kg`, `${names[day].join(" + ")} · ${fmtDate(day)}`]
+                  : ["Rest", fmtDate(day)]);
+    }
+  }
+  const ax = [[0, "M"], [2, "W"], [4, "F"]].map(([d, t]) =>
+    `<text class="ax" x="0" y="${1 + d * step + cell - 3}">${t}</text>`).join("");
+  charts.push({xs, ys, tips, W, H, kind:"cal", cell});
+  const key = [0, 1, 2, 3, 4].map(l => `<svg viewBox="0 0 11 11" aria-hidden="true" class="cal key"><rect class="${l ? "l" + l : "day"}" width="11" height="11" rx="2.5"/></svg>`).join("");
+  return `<div class="chart" data-chart="${charts.length - 1}"><h2>Consistency</h2>
+    <div class="sub">${trained} training day${trained === 1 ? "" : "s"} in the last ${weeks} weeks. Each square is a day.</div>
+    <svg class="cal" viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="${trained} training days in the last ${weeks} weeks">
+      ${ax}${cells}</svg><div class="tip"></div>
+    <div class="calkey">Less${key}More</div></div>`;
+}
 function statsRow(){
   const wk = weekDates()[0], thisWeek = S.history.filter(r => r.date >= wk);
   const vol = thisWeek.reduce((a, r) => a + tonnage(r), 0);
@@ -1630,20 +1766,20 @@ function statsRow(){
 }
 function progressView(){
   charts = [];
-  let h = S.history.length ? statsRow() + volumeChart() :
+  let h = S.history.length ? statsRow() + consistency() + volumeChart() :
     `<div class="card"><p>These are your starting weights. They will move as you log sessions,
      and charts appear here once there is something to draw. Tap a row to see its history.</p></div>`;
   const keys = [...new Set(S.prog.order.flatMap(id => S.prog.sessions[id].plan.map(p => p[0])))];
   for (const g of [...GROUP_ORDER, "other"]){
-    const ks = keys.filter(k => (GROUPS[S.prog.ex[k].group] ? S.prog.ex[k].group : "other") === g);
+    const ks = keys.filter(k => regionOf(S.prog.ex[k].group) === g);
     if (!ks.length) continue;
     h += `<div class="grp"><i style="background:${gcol(g)}"></i>${GROUPS[g] || "Other"}</div>`;
     for (const k of ks){
       const e = S.prog.ex[k], now = S.weights[k], d = Math.round((now - e.start) * 100) / 100;
       const u = usedIn(k);
       const dup = Object.keys(S.prog.ex).some(x => x !== k && S.prog.ex[x].name === e.name);
-      const tag = u.length > 1 ? `<em>in ${esc(u.map(x => S.prog.sessions[x].name).join(" and "))}</em>`
-                : dup ? `<em>${e.lo}–${e.hi} reps</em>` : "";
+      const tag = u.length > 1 ? `<em>${muscleName(e.group)} · in ${esc(u.map(x => S.prog.sessions[x].name).join(" and "))}</em>`
+                : dup ? `<em>${muscleName(e.group)} · ${e.lo}–${e.hi} reps</em>` : `<em>${muscleName(e.group)}</em>`;
       h += `<button class="prow" data-px="${k}">${icon(e, "sm")}
         <div class="nm">${esc(e.name)}${tag}</div>
         ${spark(k)}
@@ -1698,6 +1834,7 @@ function wireCharts(){
   document.querySelectorAll("[data-chart]").forEach(box => {
     const c = charts[+box.dataset.chart], svg = box.querySelector("svg"), tip = box.querySelector(".tip");
     const xh = svg.querySelector(".xh"), cols = svg.querySelectorAll(".col");
+    const cells = c.kind === "cal" ? svg.querySelectorAll("rect") : [];
     let cur = -1;
     const show = i => {
       cur = i;
@@ -1712,15 +1849,23 @@ function wireCharts(){
       tip.style.top = Math.max(2, py - th - 10) + "px";
       if (xh){ xh.setAttribute("x1", c.xs[i]); xh.setAttribute("x2", c.xs[i]); xh.classList.add("on"); }
       cols.forEach((el, j) => el.classList.toggle("dim", j !== i));
+      cells.forEach((el, j) => el.classList.toggle("on", j === i));
     };
     const hide = () => {
       cur = -1; tip.classList.remove("on");
       if (xh) xh.classList.remove("on");
       cols.forEach((el, j) => el.classList.toggle("dim", j !== cols.length - 1));
+      cells.forEach(el => el.classList.remove("on"));
     };
     const near = ev => {
       const r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * c.W / r.width;
       let best = 0;
+      if (c.kind === "cal"){
+        const y = (ev.clientY - r.top) * c.H / r.height - c.cell / 2;
+        const d = i => (c.xs[i] - x) ** 2 + (c.ys[i] - y) ** 2;
+        c.xs.forEach((_, i) => { if (d(i) < d(best)) best = i; });
+        return best;
+      }
       c.xs.forEach((px, i) => { if (Math.abs(px - x) < Math.abs(c.xs[best] - x)) best = i; });
       return best;
     };

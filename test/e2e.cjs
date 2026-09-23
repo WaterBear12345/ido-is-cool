@@ -159,7 +159,7 @@ function serve(){
   await benchRow.click();
   eq("bench detail lists three sessions", await page.locator(".detail .drow").count(), 3);
   check("shared tag on low rows", (await page.locator('[data-px="lowrow"] em').textContent()).includes("Upper B"));
-  eq("rep-range tag on repeated names", await page.locator('[data-px="tripushA"] em').textContent(), "10–12 reps");
+  eq("rep-range tag on repeated names", await page.locator('[data-px="tripushA"] em').textContent(), "Triceps · 10–12 reps");
   eq("three history rows", await page.locator("[data-ph]").count(), 3);
   await page.click('[data-ph="2"]');
   eq("history detail shows sets", await page.locator('[data-ph="2"] + .detail .drow').nth(1).locator("span").last().textContent(), "10 / 10 / 9");
@@ -194,7 +194,7 @@ function serve(){
   const nid = added[0];
   eq("new exercise appended with 3 sets", [nid.startsWith("overhead"), added[1]], [true, 3]);
   eq("new exercise definition", st.prog.ex[nid],
-     {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90, group:"arms", barKg:20});
+     {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90, group:"triceps", barKg:20});
   eq("new exercise weight", st.weights[nid], 20);
   check("plan sub counts the new sets", /58 working sets/.test(await page.textContent("#hSub")));
 
@@ -484,8 +484,10 @@ function serve(){
      [[25, 15], [25, 15, 2.5]]);
   eq("cable exercises are their own kind", await page.evaluate(() => [S.prog.ex.pulldown.kind, S.prog.ex.flies.kind]), ["cable", "machine"]);
   eq("guessing a group from a name", await page.evaluate(() =>
-    ["Leg raise", "Leg curl", "Overhead extensions", "Shoulder press", "Lat pulldown", "Incline press", "Zottman"].map(guessGroup)),
-    ["core", "legs", "arms", "shoulders", "back", "chest", "other"]);
+    ["Leg raise", "Leg curl", "Overhead extensions", "Shoulder press", "Lat pulldown", "Incline press", "Zottman",
+     "Leg extension", "Back extension", "Lat raise", "Russian twist", "Tricep kickback", "Glute kickback", "Face pulls", "Low rows"].map(guessGroup)),
+    ["abs", "hamstrings", "triceps", "shoulders", "lats", "chest", "other",
+     "quads", "lowerback", "shoulders", "obliques", "triceps", "glutes", "reardelts", "upperback"]);
 
   await page.click('[data-start="lowerA"]');
   eq("squat card carries a legs-tinted barbell icon", await page.locator(".ex").first().locator(".ico").getAttribute("style"), "color:var(--g-legs)");
@@ -535,7 +537,10 @@ function serve(){
      ["bar", "bar", "stack", "stack", "cable"]);
   check("the stack says where the pin goes", (await page.textContent(".body .viz")).includes("Pin at40 kg"),
         await page.textContent(".body .viz"));
-  eq("icons pair equipment with the muscle", await page.locator(".ex").nth(4).locator(".ico").getAttribute("aria-label"), "Cable, Core");
+  eq("icons pair equipment with the muscle", await page.locator(".ex").nth(4).locator(".ico").getAttribute("aria-label"), "Cable, Abs");
+  eq("the muscle is filled on the figure", await page.locator(".ex").nth(4).locator(".ico .fp.hot").count(), 2);
+  eq("an upper-body muscle shows the upper half", await page.locator(".ex").nth(4).locator(".ico svg.fig").getAttribute("viewBox"), "8 0 44 64");
+  eq("a leg muscle shows the lower half", await page.locator(".ex").nth(0).locator(".ico svg.fig").getAttribute("viewBox"), "8 52 44 69");
   eq("two glyphs in each icon", await page.locator(".ex").nth(4).locator(".ico svg").count(), 2);
   await page.click("#abandon");
   await page.click('[data-start="upperA"]');
@@ -552,7 +557,9 @@ function serve(){
   await tapTab(page, "plan");
   await page.locator(".sess").nth(0).locator("[data-add]").click();
   await page.fill('[data-f="name"]', "Front squat");
-  check("group is guessed while typing", await page.locator('.edit input[name="group"][value="legs"]').isChecked());
+  check("muscle is guessed while typing", await page.locator('.edit input[name="group"][value="quads"]').isChecked());
+  eq("the picker offers fifteen muscles, each on a full figure", await page.locator(".edit .mpick label").count(), 15);
+  eq("full figures are uncropped", await page.locator('.edit .mpick label:has(input[value="calves"]) svg').getAttribute("viewBox"), "8 0 44 121");
   eq("one equipment row, barbell included", await page.locator('.edit .seg.eqs label').allTextContents(),
      ["Barbell", "Dumbbell", "Machine", "Cable", "Free wt"]);
   check("bar weight hidden until Barbell is picked", await page.locator('.edit [data-when="bar"]').isHidden());
@@ -564,7 +571,7 @@ function serve(){
   await page.click(".edit [data-save]");
   let st2 = await S(page);
   const fs2 = Object.values(st2.prog.ex).find(e => e.name === "Front squat");
-  eq("new barbell exercise", [fs2.kind, fs2.barKg, fs2.group, fs2.lo, fs2.hi], ["bar", 25, "legs", 7, 10]);
+  eq("new barbell exercise", [fs2.kind, fs2.barKg, fs2.group, fs2.lo, fs2.hi], ["bar", 25, "quads", 7, 10]);
   await page.locator(".sess").nth(1).locator("[data-add]").click();
   await page.fill('[data-f="name"]', "Zottman curl");
   await page.check('.edit input[name="kind"][value="db"]');
@@ -588,12 +595,12 @@ function serve(){
   eq("and back on", await page.evaluate(() => S.prog.ex.bench.kind), "bar");
   await page.locator(".sess").nth(0).locator("[data-add]").click();
   await page.fill('[data-f="name"]', "Russian twists");
-  check("a twist is guessed as core", await page.locator('.edit input[name="group"][value="core"]').isChecked());
+  check("a twist is guessed as obliques", await page.locator('.edit input[name="group"][value="obliques"]').isChecked());
   await page.check('.edit input[name="kind"][value="free"]');
   await page.fill('[data-f="w"]', "10");
   await page.click(".edit [data-save]");
   eq("free weight is its own kind", await page.evaluate(() =>
-    Object.values(S.prog.ex).filter(e => e.name === "Russian twists").map(e => [e.kind, e.group])), [["free", "core"]]);
+    Object.values(S.prog.ex).filter(e => e.name === "Russian twists").map(e => [e.kind, e.group])), [["free", "obliques"]]);
   check("plan rows carry icons", (await page.locator(".pl .ico").count()) >= 20);
 
   /* Charts */
@@ -605,16 +612,38 @@ function serve(){
   });
   await tapTab(page, "progress");
   eq("three stat tiles", await page.locator(".stat").count(), 3);
-  eq("one column per session", await page.locator('[data-chart="0"] .col').count(), 3);
-  const vbox = await page.locator('[data-chart="0"] svg').boundingBox();
-  await page.mouse.move(vbox.x + 50, vbox.y + vbox.height / 2);
-  check("hovering a column shows its value", (await page.textContent('[data-chart="0"] .tip')).includes("kg"),
+  eq("the consistency grid comes first", await page.textContent('[data-chart="0"] h2'), "Consistency");
+  eq("three trained days", await page.locator('[data-chart="0"] > svg rect[class^="l"]').count(), 3);
+  check("no squares after today", await page.evaluate(() => {
+    const c = charts[0]; return c.tips[c.tips.length - 1][1] === fmtDate(todayISO());
+  }));
+  eq("heavier days are darker", await page.evaluate(() =>
+    ["2026-09-08", "2026-09-15", "2026-09-22"].map(d => {
+      const i = charts[0].tips.findIndex(t => t[1].endsWith(fmtDate(d)));
+      return document.querySelectorAll('[data-chart="0"] > svg rect')[i].getAttribute("class");
+    })), ["l1", "l4", "l2"]);
+  const cal = charts => page.evaluate(() => {
+    const c = charts[0], i = c.tips.findIndex(t => t[1].endsWith(fmtDate("2026-09-15")));
+    const r = document.querySelector('[data-chart="0"] svg').getBoundingClientRect();
+    return {x: r.left + c.xs[i] * r.width / c.W, y: r.top + (c.ys[i] + c.cell / 2) * r.height / c.H};
+  });
+  await page.locator('[data-chart="0"]').scrollIntoViewIfNeeded();
+  const pt = await cal();
+  await page.mouse.move(pt.x, pt.y);
+  check("tapping a day names the session and its volume", (await page.textContent('[data-chart="0"] .tip')).includes("Upper A"),
         await page.textContent('[data-chart="0"] .tip'));
+  eq("a key runs from less to more", await page.locator('[data-chart="0"] .calkey svg').count(), 5);
+  eq("one column per session", await page.locator('[data-chart="1"] .col').count(), 3);
+  const vbox = await page.locator('[data-chart="1"] svg').boundingBox();
+  await page.mouse.move(vbox.x + 50, vbox.y + vbox.height / 2);
+  check("hovering a column shows its value", (await page.textContent('[data-chart="1"] .tip')).includes("kg"),
+        await page.textContent('[data-chart="1"] .tip'));
   check("rows have sparklines", (await page.locator('[data-px="bench"] .spark').count()) === 1);
   await page.click('[data-px="bench"]');
   eq("detail shows a weight chart", await page.locator(".detail .chart .ln").count(), 1);
   eq("one dot per session", await page.locator(".detail .chart .dot").count(), 3);
   eq("the latest weight is labelled at the end", await page.textContent(".detail .chart .lbl"), "65");
+  await page.locator(".detail .chart").scrollIntoViewIfNeeded();
   const lbox = await page.locator(".detail .chart svg").boundingBox();
   await page.mouse.move(lbox.x + lbox.width - 50, lbox.y + lbox.height / 2);
   check("tooltip carries the reps", (await page.textContent(".detail .tip")).includes("8 / 8 / 7"),
@@ -638,10 +667,33 @@ function serve(){
   await page.reload({waitUntil:"networkidle"});
   eq("old data gains groups, cable and the 25 kg squat bar", await page.evaluate(() =>
     [S.prog.ex.bench.group, S.prog.ex.pulldown.kind, S.prog.ex.squat.barKg, S.prog.ex.bench.barKg, S.prog.ex.mine.group]),
-    ["chest", "cable", 25, 20, "core"]);
+    ["chest", "cable", 25, 20, "abs"]);
   await page.evaluate(() => { S.prog.ex.pulldown.kind = "machine"; save(); });
   await page.reload({waitUntil:"networkidle"});
   eq("a kind changed by hand afterwards is left alone", await page.evaluate(() => S.prog.ex.pulldown.kind), "machine");
+  /* a log from before specific muscles: groups were the six regions */
+  await page.evaluate(() => {
+    const o = JSON.parse(JSON.stringify(S));
+    delete o.settings.muscles;
+    const region = {chest:"chest", lats:"back", upperback:"back", lowerback:"back", quads:"legs", adductors:"legs",
+      glutes:"legs", hamstrings:"legs", calves:"legs", biceps:"arms", triceps:"arms", shoulders:"shoulders",
+      reardelts:"shoulders", abs:"core", obliques:"core"};
+    for (const k in o.prog.ex) o.prog.ex[k].group = region[o.prog.ex[k].group] || o.prog.ex[k].group;
+    o.prog.ex.mine.group = "arms";           /* a custom exercise whose name says nothing */
+    o.prog.ex.ohp.group = "arms";            /* a default one moved to another region by hand */
+    o.prog.ex.kick = {name:"Tricep kickback", lo:10, hi:12, inc:1, start:5, kind:"db", rest:60, group:"arms", barKg:20};
+    o.weights.kick = 5;
+    localStorage.setItem("barload.v2", JSON.stringify(o));
+  });
+  await page.reload({waitUntil:"networkidle"});
+  eq("old regions become specific muscles", await page.evaluate(() =>
+    ["bench", "facepull", "lowrow", "pulldown", "crunch", "tripushA", "preacher", "rdl", "calfA", "hipadd"].map(k => S.prog.ex[k].group)),
+    ["chest", "reardelts", "upperback", "lats", "abs", "triceps", "biceps", "hamstrings", "calves", "adductors"]);
+  eq("custom ones are guessed within their region, else its main muscle", await page.evaluate(() =>
+    [S.prog.ex.kick.group, S.prog.ex.mine.group, S.prog.ex.ohp.group]), ["triceps", "biceps", "biceps"]);
+  eq("and it only happens once", await page.evaluate(() => { S.prog.ex.bench.group = "triceps"; save(); return S.settings.muscles; }), 2);
+  await page.reload({waitUntil:"networkidle"});
+  eq("a later hand-picked muscle survives reloads", await page.evaluate(() => S.prog.ex.bench.group), "triceps");
   await page.close();
 
   console.log("\nPlan changes reach the workout in progress");
