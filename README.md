@@ -68,7 +68,11 @@ add or remove sessions, and for each exercise change the sets, rep range, increm
 rest between sets, current weight, muscle group and equipment. Equipment is one row:
 barbell, dumbbell, machine, cable or free weight, the last for things like Russian
 twists with a plate or kettlebell. Picking barbell asks whether the bar is 20 or 25 kg. A new exercise guesses its muscle group from its
-name until you pick one. The muscle picker shows all fifteen as full body figures.
+name until you pick one. The muscle picker shows all fifteen as full body figures, and
+takes several: pick every muscle an exercise trains. The first one picked is its main
+muscle, marked "Main", which sets its colour and its place in Progress. The icon then
+lights every muscle in its own colour, with a front and a back figure side by side when
+the muscles need both.
 
 Plan changes made during a workout carry straight into it. Adding, removing or
 reordering exercises, or changing a set count, updates the workout in progress, and
@@ -83,7 +87,8 @@ repeated on separate weights because their rep ranges differ.
 
 **Progress.** Sessions logged, volume this week and how many weights have gone up, then
 a consistency grid: one square per day, a column per week up to today, darker for more
-kilograms moved, with each square naming its session when tapped. Then a chart of the
+kilograms moved, with each square naming its session when tapped. On a phone a tapped readout on any
+chart stays until you tap somewhere else. Then a chart of the
 volume moved in each of the last twelve sessions. Below that, every
 exercise grouped by region and labelled with its muscle, with its current weight, gain since the start and a
 sparkline. Tap a row for a chart of its working weight over time and its last six
@@ -147,7 +152,8 @@ everything including the programme.
 The defaults are in `index.html` in the `DEFAULT_EX` and `DEFAULT_SESSIONS` blocks near
 the top of the script. `lo` and `hi` are the rep range, `inc` is the weight jump,
 `start` is the starting weight, `kind` is `bar`, `db`, `machine`, `cable` or `free`, `barKg` is
-20 or 25 for a barbell, `group` is the muscle (one of the fifteen keys in `MUSCLE`), and `rest` is the seconds between
+20 or 25 for a barbell, `muscles` is the list of muscles it trains (keys of `MUSCLE`, main one first) and
+`group` repeats the main one, and `rest` is the seconds between
 sets. The defaults for those last three live in `DEFAULT_BAR`, `DEFAULT_GROUP` and
 `DEFAULT_REST`. Squats default to a 25 kg bar. An existing log picks up groups, cable
 and the squat bar once, on first load; anything you change by hand afterwards stays. Days run 0 for

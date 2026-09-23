@@ -97,6 +97,9 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 /* body figures: neutral parts with hairline gaps, the targeted muscle in its group colour */
 .fp{fill:var(--fig);stroke:var(--panel);stroke-width:.9;stroke-linejoin:round}
 svg .fp.hot{fill:currentColor}
+.ico svg.fig + svg.fig{margin-left:-3px}
+.mpick label.main::after{content:"Main";position:absolute;top:4px;right:4px;font-size:9px;font-weight:800;
+     letter-spacing:.02em;color:var(--ground);background:var(--ink);padding:1px 4px;border-radius:5px}
 .ico svg.fig{width:auto;height:40px}
 .ico.sm svg.fig{height:34px}
 .mpick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -487,6 +490,10 @@ const REGION_DEFAULT = {chest:"chest", back:"upperback", legs:"quads", arms:"bic
 const regionOf = m => MUSCLE[m] ? MUSCLE[m].r : (GROUPS[m] ? m : "other");
 const gcol = g => `var(--g-${regionOf(g)})`;
 const muscleName = m => MUSCLE[m] ? MUSCLE[m].n : "Other";
+/* An exercise trains a list of muscles; the first is its main one, which sets its colour
+   and where it sits in Progress. `group` mirrors it for everything that wants just one. */
+const musclesOf = e => Array.isArray(e.muscles) && e.muscles.length ? e.muscles : [e.group];
+const musclesLabel = e => musclesOf(e).map(muscleName).join(" · ");
 /* Guess a muscle from a name; first match wins, so "leg raise" is abs, "leg curl" is
    hamstrings, "leg extension" is quads and "lat raise" is shoulders. */
 const GUESS = [
@@ -546,20 +553,27 @@ const FIG = {
 const CENTRE = new Set(["head", "neck"]);
 const LOWER = new Set(["quads", "adductors", "glutes", "hamstrings", "calves"]);
 /* crop: small icons show just the half of the body that matters, so the muscle is legible. */
-function figure(m, crop){
-  const v = MUSCLE[m] ? MUSCLE[m].v : "front";
-  let h = "";
-  for (const [part, d] of FIG[v]){
-    const c = part === m ? "fp hot" : "fp";
-    h += `<path class="${c}" d="${d}"/>`;
-    if (!CENTRE.has(part)) h += `<path class="${c}" d="${d}" transform="matrix(-1 0 0 1 60 0)"/>`;
-  }
-  const box = !crop ? "8 0 44 121" : LOWER.has(m) ? "8 52 44 69" : "8 0 44 64";
-  return `<svg class="fig" viewBox="${box}" aria-hidden="true">${h}</svg>`;
+function figure(ms, crop){
+  ms = [].concat(ms);
+  const known = ms.filter(m => MUSCLE[m]);
+  const views = known.length ? ["front", "back"].filter(v => known.some(m => MUSCLE[m].v === v)) : ["front"];
+  /* crop to one half only when every muscle lives in it */
+  const box = !crop || !known.length ? "8 0 44 121"
+    : known.every(m => LOWER.has(m)) ? "8 52 44 69"
+    : known.every(m => !LOWER.has(m)) ? "8 0 44 64" : "8 0 44 121";
+  return views.map(v => {
+    let h = "";
+    for (const [part, d] of FIG[v]){
+      const hot = known.includes(part), c = hot ? "fp hot" : "fp", st = hot ? ` style="color:${gcol(part)}"` : "";
+      h += `<path class="${c}"${st} d="${d}"/>`;
+      if (!CENTRE.has(part)) h += `<path class="${c}"${st} d="${d}" transform="matrix(-1 0 0 1 60 0)"/>`;
+    }
+    return `<svg class="fig" data-view="${v}" viewBox="${box}" aria-hidden="true">${h}</svg>`;
+  }).join("");
 }
 const icon = (e, cls = "") =>
-  `<span class="ico ${cls}" style="color:${gcol(e.group)}" role="img" aria-label="${KIND_NAME[e.kind] || "Machine"}, ${muscleName(e.group)}">`
-  + `<svg class="eq" viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg><i></i>${figure(e.group, true)}</span>`;
+  `<span class="ico ${cls}" style="color:${gcol(e.group)}" role="img" aria-label="${KIND_NAME[e.kind] || "Machine"}, ${musclesOf(e).map(muscleName).join(", ")}">`
+  + `<svg class="eq" viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg><i></i>${figure(musclesOf(e), true)}</span>`;
 
 /* ── default programme, starting weights as of 6 Sep 2026 ──────────────
    kind: "bar" = barbell with plate maths on a barKg bar, "db" = dumbbells (per
@@ -606,6 +620,7 @@ for (const k in DEFAULT_EX){
   const e = DEFAULT_EX[k];
   e.rest = DEFAULT_REST[k] || 75;
   e.group = DEFAULT_GROUP[k];
+  e.muscles = [e.group];
   e.barKg = DEFAULT_BAR[k] || BARBELL;
   if (CABLE.includes(k)) e.kind = "cable";
 }
@@ -681,6 +696,12 @@ function migrate(o){
     }
   }
   n.settings.muscles = 2;
+  for (const k in n.prog.ex){
+    const e = n.prog.ex[k];
+    const ok = Array.isArray(e.muscles) ? [...new Set(e.muscles.filter(m => MUSCLE[m]))] : [];
+    e.muscles = ok.length ? ok : [e.group];
+    e.group = e.muscles[0];
+  }
   for (const r of n.history){
     if (!r.name && n.prog.sessions[r.id]) r.name = n.prog.sessions[r.id].name;
     for (const x of r.entries) if (!x.name && n.prog.ex[x.k]) x.name = n.prog.ex[x.k].name;
@@ -807,7 +828,7 @@ function toast(msg){
    be told apart from a "+ set" made during the workout. */
 function liveEntry(k, n){
   const e = S.prog.ex[k];
-  return {k, name:e.name, lo:e.lo, hi:e.hi, inc:e.inc, kind:e.kind, rest:e.rest, group:e.group, barKg:e.barKg,
+  return {k, name:e.name, lo:e.lo, hi:e.hi, inc:e.inc, kind:e.kind, rest:e.rest, group:e.group, muscles:musclesOf(e), barKg:e.barKg,
           weight:S.weights[k], reps:new Array(n).fill(null), planN:n};
 }
 function startSession(id){
@@ -848,7 +869,7 @@ function syncLive(){
 }
 /* The current programme definition wins; the snapshot covers an exercise deleted mid-session. */
 const liveDef = x => S.prog.ex[x.k]
-  || {name:x.name, lo:x.lo, hi:x.hi, inc:x.inc, kind:x.kind, rest:x.rest, group:x.group, barKg:x.barKg || BARBELL};
+  || {name:x.name, lo:x.lo, hi:x.hi, inc:x.inc, kind:x.kind, rest:x.rest, group:x.group, muscles:x.muscles, barKg:x.barKg || BARBELL};
 
 function hitTop(entry){
   const e = liveDef(entry);
@@ -1153,7 +1174,7 @@ function pickView(){
   h += `<div class="grp">Or pick a session</div><div class="pick">`;
   for (const id of S.prog.order){
     const s = S.prog.sessions[id];
-    const gs = [...new Set(s.plan.map(([k]) => regionOf(S.prog.ex[k].group)))]
+    const gs = [...new Set(s.plan.flatMap(([k]) => musclesOf(S.prog.ex[k]).map(regionOf)))]
       .sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b));
     h += `<button data-start="${id}"><b>${esc(s.name)}</b>
       <span>${setsOf(s)} sets${hasDay(s) ? " · " + DAYFULL[s.day] : ""}</span>
@@ -1428,9 +1449,12 @@ function exFields(e, w, a = "", isNew = false){
   return `
     <div class="wide"${a}><label>Name</label><input data-f="name" value="${esc(e.name || "")}" maxlength="40"
       ${isNew ? 'placeholder="e.g. Overhead extensions"' : ""}></div>
-    <div class="wide"${a}><label>Muscle</label><div class="mpick">${MUSCLE_ORDER.map(g =>
-      `<label style="color:${gcol(g)}"><input type="radio" name="group" value="${g}"${e.group === g ? " checked" : ""}>`
-      + `${figure(g)}<span style="color:var(--ink)">${MUSCLE[g].n}</span></label>`).join("")}</div></div>
+    <div class="wide"${a}><label>Muscles</label><div class="mpick">${MUSCLE_ORDER.map(g => {
+      const ms = e.group ? musclesOf(e) : [], on = ms.includes(g);
+      return `<label style="color:${gcol(g)}"${ms[0] === g ? ' class="main"' : ""}><input type="checkbox" name="group" value="${g}"${on ? " checked" : ""}>`
+        + `${figure(g)}<span style="color:var(--ink)">${MUSCLE[g].n}</span></label>`;
+    }).join("")}</div>
+      <p class="hint">Pick every muscle it trains. The first one you pick is its main muscle, which sets its colour and its place in Progress.</p></div>
     <div class="wide"${a}><label>Equipment</label><div class="seg eqs">${KINDS.map(([v, l]) =>
       `<label><input type="radio" name="kind" value="${v}"${kind === v ? " checked" : ""}>`
       + `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[v]}</svg>${l}</label>`).join("")}</div></div>
@@ -1579,13 +1603,23 @@ function wirePlan(){
   form.querySelectorAll('[name="kind"]').forEach(r => r.onchange = () => {
     form.querySelector('[data-when="bar"]').hidden = r.value !== "bar";
   });
-  /* A new exercise picks its group from its name until one is chosen by hand. */
-  let groupTouched = !!form.querySelector('[name="group"]:checked');
-  form.querySelectorAll('[name="group"]').forEach(r => r.onchange = () => { groupTouched = true; });
+  /* Muscles are kept in the order picked, so the first stays the main one. A new exercise
+     picks one from its name until any is chosen by hand. */
+  const boxes = [...form.querySelectorAll('[name="group"]')];
+  let chosen = edit.i >= 0 ? musclesOf(S.prog.ex[s.plan[edit.i][0]]).filter(m => MUSCLE[m]) : [];
+  const showMain = () => boxes.forEach(b => b.parentElement.classList.toggle("main", b.value === chosen[0]));
+  let groupTouched = chosen.length > 0;
+  boxes.forEach(b => b.onchange = () => {
+    groupTouched = true;
+    chosen = b.checked ? [...chosen.filter(m => m !== b.value), b.value] : chosen.filter(m => m !== b.value);
+    showMain();
+  });
   get("name").oninput = () => {
     if (groupTouched) return;
     const g = guessGroup(get("name").value);
-    form.querySelectorAll('[name="group"]').forEach(r => { r.checked = r.value === g; });
+    chosen = MUSCLE[g] ? [g] : [];
+    boxes.forEach(b => { b.checked = b.value === g; });
+    showMain();
   };
   const src = get("src");
   if (src) src.onchange = () => {
@@ -1601,7 +1635,8 @@ function wirePlan(){
     const name = get("name").value.trim(), lo = +get("lo").value, hi = +get("hi").value,
           inc = +get("inc").value, w = +get("w").value, rest = +get("rest").value,
           kind = pick("kind") || "machine",
-          barKg = +(pick("barKg") || BARBELL), group = pick("group") || guessGroup(name);
+          barKg = +(pick("barKg") || BARBELL),
+          muscles = chosen.length ? chosen.slice() : [guessGroup(name)], group = muscles[0];
     if (!name){ toast("Give it a name."); return; }
     if (!(lo >= 1 && hi >= lo)){ toast("Rep range needs a low end and a high end."); return; }
     if (!(inc > 0)){ toast("Increment must be above zero."); return; }
@@ -1609,7 +1644,7 @@ function wirePlan(){
     if (!(w >= 0)){ toast("Weight can't be negative."); return; }
     if (edit.i >= 0){
       const k = s.plan[edit.i][0], e = S.prog.ex[k];
-      Object.assign(e, {name, lo, hi, inc, kind, rest, group, barKg});
+      Object.assign(e, {name, lo, hi, inc, kind, rest, group, barKg, muscles});
       if (S.weights[k] !== w){
         S.weights[k] = w;
         if (!hasHistory(k)) e.start = w;
@@ -1618,7 +1653,7 @@ function wirePlan(){
       }
     } else {
       const k = newId(name);
-      S.prog.ex[k] = {name, lo, hi, inc, start:w, kind, rest, group, barKg};
+      S.prog.ex[k] = {name, lo, hi, inc, start:w, kind, rest, group, barKg, muscles};
       S.weights[k] = w;
       s.plan.push([k, edit.n]);
     }
@@ -1778,8 +1813,8 @@ function progressView(){
       const e = S.prog.ex[k], now = S.weights[k], d = Math.round((now - e.start) * 100) / 100;
       const u = usedIn(k);
       const dup = Object.keys(S.prog.ex).some(x => x !== k && S.prog.ex[x].name === e.name);
-      const tag = u.length > 1 ? `<em>${muscleName(e.group)} · in ${esc(u.map(x => S.prog.sessions[x].name).join(" and "))}</em>`
-                : dup ? `<em>${muscleName(e.group)} · ${e.lo}–${e.hi} reps</em>` : `<em>${muscleName(e.group)}</em>`;
+      const tag = u.length > 1 ? `<em>${musclesLabel(e)} · in ${esc(u.map(x => S.prog.sessions[x].name).join(" and "))}</em>`
+                : dup ? `<em>${musclesLabel(e)} · ${e.lo}–${e.hi} reps</em>` : `<em>${musclesLabel(e)}</em>`;
       h += `<button class="prow" data-px="${k}">${icon(e, "sm")}
         <div class="nm">${esc(e.name)}${tag}</div>
         ${spark(k)}
@@ -1830,7 +1865,10 @@ function stalled(k){
 }
 
 /* One tooltip per chart: the crosshair finds the nearest point by x; columns lift. */
+let pinned = [];
+document.addEventListener("pointerdown", ev => pinned.forEach(f => f(ev)), true);
 function wireCharts(){
+  pinned = [];
   document.querySelectorAll("[data-chart]").forEach(box => {
     const c = charts[+box.dataset.chart], svg = box.querySelector("svg"), tip = box.querySelector(".tip");
     const xh = svg.querySelector(".xh"), cols = svg.querySelectorAll(".col");
@@ -1869,11 +1907,13 @@ function wireCharts(){
       c.xs.forEach((px, i) => { if (Math.abs(px - x) < Math.abs(c.xs[best] - x)) best = i; });
       return best;
     };
-    svg.addEventListener("pointermove", ev => show(near(ev)));
+    /* A mouse shows values as it moves and hides them on leaving. A finger pins the
+       value where it lands; it stays until a tap somewhere outside this chart. */
+    svg.addEventListener("pointermove", ev => { if (ev.pointerType === "mouse" || ev.buttons) show(near(ev)); });
     svg.addEventListener("pointerdown", ev => show(near(ev)));
-    svg.addEventListener("pointerleave", hide);
-    svg.addEventListener("focus", () => show(c.xs.length - 1));
-    svg.addEventListener("blur", hide);
+    svg.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse") hide(); });
+    svg.addEventListener("focus", () => { if (cur < 0) show(c.xs.length - 1); });
+    pinned.push(ev => { if (!svg.contains(ev.target)) hide(); });
     svg.addEventListener("keydown", ev => {
       if (ev.key === "ArrowLeft" || ev.key === "ArrowRight"){
         ev.preventDefault();

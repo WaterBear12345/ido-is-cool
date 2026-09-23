@@ -194,7 +194,7 @@ function serve(){
   const nid = added[0];
   eq("new exercise appended with 3 sets", [nid.startsWith("overhead"), added[1]], [true, 3]);
   eq("new exercise definition", st.prog.ex[nid],
-     {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90, group:"triceps", barKg:20});
+     {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90, group:"triceps", barKg:20, muscles:["triceps"]});
   eq("new exercise weight", st.weights[nid], 20);
   check("plan sub counts the new sets", /58 working sets/.test(await page.textContent("#hSub")));
 
@@ -575,13 +575,15 @@ function serve(){
   await page.locator(".sess").nth(1).locator("[data-add]").click();
   await page.fill('[data-f="name"]', "Zottman curl");
   await page.check('.edit input[name="kind"][value="db"]');
+  check("the guess from the name is picked", await page.locator('.edit input[name="group"][value="biceps"]').isChecked());
   await page.check('.edit input[name="group"][value="shoulders"]');
   await page.fill('[data-f="name"]', "Zottman curls");
-  check("a group picked by hand is not overridden by typing", await page.locator('.edit input[name="group"][value="shoulders"]').isChecked());
+  check("muscles picked by hand are not overridden by typing", await page.locator('.edit input[name="group"][value="shoulders"]').isChecked()
+        && await page.locator('.edit input[name="group"][value="biceps"]').isChecked());
   await page.click(".edit [data-save]");
   st2 = await S(page);
   const z = Object.values(st2.prog.ex).find(e => e.name === "Zottman curls");
-  eq("new dumbbell exercise", [z.kind, z.group], ["db", "shoulders"]);
+  eq("new dumbbell exercise with two muscles, the first picked is main", [z.kind, z.group, z.muscles], ["db", "biceps", ["biceps", "shoulders"]]);
   await page.click('[data-edit="upperA:0"]');
   check("editing shows Barbell picked for bench", await page.locator('.edit input[name="kind"][value="bar"]').isChecked());
   eq("with its 20 kg bar selected", await page.locator('.edit input[name="barKg"]:checked').getAttribute("value"), "20");
@@ -653,6 +655,69 @@ function serve(){
   await shot(page, "30-progress-charts");
   await page.close();
 
+  console.log("\nSeveral muscles per exercise, and readouts that stay after a tap");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => { S.settings.autosave = false; save(); });
+  await tapTab(page, "plan");
+  await page.click('[data-edit="upperA:0"]');
+  eq("bench starts with chest as main", await page.locator(".edit .mpick label.main input").getAttribute("value"), "chest");
+  await page.check('.edit input[name="group"][value="triceps"]');
+  await page.check('.edit input[name="group"][value="shoulders"]');
+  eq("three picked", await page.locator('.edit input[name="group"]:checked').count(), 3);
+  eq("chest is still main", await page.locator(".edit .mpick label.main input").getAttribute("value"), "chest");
+  await page.click(".edit [data-save]");
+  eq("saved in the order picked", await page.evaluate(() => [S.prog.ex.bench.group, S.prog.ex.bench.muscles]),
+     ["chest", ["chest", "triceps", "shoulders"]]);
+  const bicon = page.locator('[data-edit="upperA:0"] .ico');
+  eq("the icon names every muscle", await bicon.getAttribute("aria-label"), "Barbell, Chest, Triceps, Shoulders");
+  eq("front and back figures when the muscles need both", await bicon.locator("svg.fig").evaluateAll(els => els.map(e => e.dataset.view)), ["front", "back"]);
+  eq("chest and shoulders lit on the front, both sides", await bicon.locator('svg[data-view="front"] .fp.hot').count(), 4);
+  eq("triceps lit on the back", await bicon.locator('svg[data-view="back"] .fp.hot').count(), 2);
+  eq("each muscle in its own colour", await bicon.locator('.fp.hot').evaluateAll(els => [...new Set(els.map(e => e.getAttribute("style")))].sort()),
+     ["color:var(--g-arms)", "color:var(--g-chest)", "color:var(--g-shoulders)"]);
+  eq("the icon is still tinted by the main muscle", await bicon.getAttribute("style"), "color:var(--g-chest)");
+  await page.click('[data-edit="upperA:0"]');
+  await page.uncheck('.edit input[name="group"][value="chest"]');
+  eq("dropping the main muscle hands main to the next", await page.locator(".edit .mpick label.main input").getAttribute("value"), "triceps");
+  await page.click(".edit [data-save]");
+  eq("and moves bench to arms", await page.evaluate(() => regionOf(S.prog.ex.bench.group)), "arms");
+  eq("half-body crop when all muscles share a half", await page.evaluate(() => [
+      figure(["chest", "shoulders"], true), figure(["quads", "calves"], true), figure(["chest", "quads"], true)]
+      .map(h => h.match(/viewBox="([^"]+)"/)[1])), ["8 0 44 64", "8 52 44 69", "8 0 44 121"]);
+  await tapTab(page, "progress");
+  eq("progress lists every muscle", await page.locator('[data-px="bench"] em').textContent(), "Triceps · Shoulders");
+  check("session cards show every region trained", (await page.locator('[data-tab="train"]').count()) === 1);
+
+  /* readouts stay put on touch */
+  await page.evaluate(() => {
+    const mk = (date, w) => ({date, id:"upperA", name:"Upper A", entries:[{k:"pulldown", name:"Lat pulldowns", weight:w, reps:[10, 10, 10]}]});
+    S.history = [mk("2026-09-22", 65), mk("2026-09-15", 62.5), mk("2026-09-08", 60)]; save(); render();
+  });
+  const cellAt = day => page.evaluate(day => {
+    const c = charts[0], i = c.tips.findIndex(t => t[1].endsWith(fmtDate(day)));
+    const r = document.querySelector('[data-chart="0"] svg').getBoundingClientRect();
+    return {x: r.left + c.xs[i] * r.width / c.W, y: r.top + (c.ys[i] + c.cell / 2) * r.height / c.H};
+  }, day);
+  await page.locator('[data-chart="0"]').scrollIntoViewIfNeeded();
+  let at = await cellAt("2026-09-15");
+  await page.touchscreen.tap(at.x, at.y);
+  await page.waitForTimeout(300);
+  check("a tapped square keeps its readout after the finger lifts", await page.locator('[data-chart="0"] .tip.on').count() === 1);
+  check("and it is the right day", (await page.textContent('[data-chart="0"] .tip')).includes(await page.evaluate(() => fmtDate("2026-09-15"))));
+  at = await cellAt("2026-09-22");
+  await page.touchscreen.tap(at.x, at.y);
+  check("tapping another square moves it", (await page.textContent('[data-chart="0"] .tip')).includes(await page.evaluate(() => fmtDate("2026-09-22"))));
+  eq("the tapped square is outlined", await page.locator('[data-chart="0"] > svg rect.on').count(), 1);
+  const vb = await page.locator('[data-chart="1"] svg').boundingBox();
+  await page.touchscreen.tap(vb.x + vb.width - 30, vb.y + vb.height / 2);
+  check("tapping another chart moves the readout there", await page.locator('[data-chart="1"] .tip.on').count() === 1
+        && await page.locator('[data-chart="0"] .tip.on').count() === 0);
+  await page.touchscreen.tap(20, 60);
+  await page.waitForTimeout(200);
+  eq("a tap anywhere else clears it", await page.locator(".tip.on").count(), 0);
+  await page.close();
+
   console.log("\nMigration adds groups and bars to an existing programme");
   page = await newPage();
   await page.goto(base, {waitUntil:"networkidle"});
@@ -678,7 +743,7 @@ function serve(){
     const region = {chest:"chest", lats:"back", upperback:"back", lowerback:"back", quads:"legs", adductors:"legs",
       glutes:"legs", hamstrings:"legs", calves:"legs", biceps:"arms", triceps:"arms", shoulders:"shoulders",
       reardelts:"shoulders", abs:"core", obliques:"core"};
-    for (const k in o.prog.ex) o.prog.ex[k].group = region[o.prog.ex[k].group] || o.prog.ex[k].group;
+    for (const k in o.prog.ex){ o.prog.ex[k].group = region[o.prog.ex[k].group] || o.prog.ex[k].group; delete o.prog.ex[k].muscles; }
     o.prog.ex.mine.group = "arms";           /* a custom exercise whose name says nothing */
     o.prog.ex.ohp.group = "arms";            /* a default one moved to another region by hand */
     o.prog.ex.kick = {name:"Tricep kickback", lo:10, hi:12, inc:1, start:5, kind:"db", rest:60, group:"arms", barKg:20};
@@ -691,7 +756,9 @@ function serve(){
     ["chest", "reardelts", "upperback", "lats", "abs", "triceps", "biceps", "hamstrings", "calves", "adductors"]);
   eq("custom ones are guessed within their region, else its main muscle", await page.evaluate(() =>
     [S.prog.ex.kick.group, S.prog.ex.mine.group, S.prog.ex.ohp.group]), ["triceps", "biceps", "biceps"]);
-  eq("and it only happens once", await page.evaluate(() => { S.prog.ex.bench.group = "triceps"; save(); return S.settings.muscles; }), 2);
+  eq("every exercise now has a muscle list headed by its group", await page.evaluate(() =>
+    Object.values(S.prog.ex).every(e => Array.isArray(e.muscles) && e.muscles[0] === e.group)), true);
+  eq("and it only happens once", await page.evaluate(() => { S.prog.ex.bench.muscles = ["triceps"]; S.prog.ex.bench.group = "triceps"; save(); return S.settings.muscles; }), 2);
   await page.reload({waitUntil:"networkidle"});
   eq("a later hand-picked muscle survives reloads", await page.evaluate(() => S.prog.ex.bench.group), "triceps");
   await page.close();
