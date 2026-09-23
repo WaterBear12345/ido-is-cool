@@ -55,9 +55,14 @@ function serve(){
   const shot = (page, name) => shots ? page.screenshot({path: path.join(shots, name + ".png"), fullPage:false}) : null;
   const tapTab = (page, t) => page.click(`nav button[data-tab="${t}"]`);
   /* the rep sheet: drag the slider to n, then Log set */
+  /* a rep-sheet button: the finger lands on the switch over it when haptics are on */
+  const tapBtn = async (page, id) => {
+    const sw = page.locator(`[data-for="${id}"]`);
+    if (await sw.isVisible()) await sw.click(); else await page.click("#" + id);
+  };
   const pickReps = async (page, n) => {
     await page.locator("#padRange").fill(String(n));
-    await page.click("#padLog");
+    await tapBtn(page, "padLog");
   };
   /* a rest ending puts the green screen over everything; tap it away */
   const dismissGo = async page => { if (await page.locator("#go:not(.hide)").count()) await page.click("#goDone"); };
@@ -454,50 +459,15 @@ function serve(){
   eq("a new exercise keeps its rest", await page.evaluate(() => Object.values(S.prog.ex).find(e => e.name === "Dips").rest), 180);
 
   await tapTab(page, "more");
-  eq("More has a haptics check with a real switch", await page.getAttribute("#hapSwitch", "switch"), "");
-  eq("three ways to flip a hidden switch, plus a real one", await page.locator(".haprow button[data-haptest]").allTextContents(), ["A", "B", "C"]);
-  eq("each test flips its own switch the way it says", await page.evaluate(() => {
-    const out = {};
-    for (const m of HAPTIC_MODES){
-      document.querySelector(`[data-haptest="${m}"]`).click();
-      const l = hapticEls[m];
-      out[m] = [l.style.display === "none", l.firstChild.checked];
-    }
-    return out;
-  }), {hidden:[true, true], faint:[false, true], direct:[false, true]});
-  eq("the rendered ones sit on screen, all but invisible", await page.evaluate(() => {
-    const r = hapticEls.faint.getBoundingClientRect(); return [r.width > 0, getComputedStyle(hapticEls.faint).opacity];
-  }), [true, "0.011"]);
-  eq("the ruler defaults to the rendered one", await page.evaluate(() => S.settings.hapticMode), "faint");
-  eq("the picker's hidden inputs stay inside their own options", await page.evaluate(() => {
-    const seg = document.getElementById("hapMode").getBoundingClientRect();
-    return [...document.querySelectorAll('#hapMode input')].every(i => {
-      const r = i.getBoundingClientRect(); return r.top >= seg.top - 1 && r.bottom <= seg.bottom + 1 && r.width < seg.width / 2;
-    });
-  }), true);
+  eq("More explains haptics", (await page.textContent(".card:has(#hap)")).includes("System Haptics"), true);
   eq("so nothing on More is covered by them", await page.evaluate(() => {
     const r = document.getElementById("json").getBoundingClientRect();
     return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2).id;
   }), "json");
-  await page.check('#hapMode input[value="direct"]');
-  eq("picking one is saved for the ruler", await page.evaluate(() => {
-    const before = hapticEls.direct.firstChild.checked;
-    const saved = navigator.vibrate; navigator.vibrate = undefined;
-    const tr = document.getElementById("padTrack");
-    switchTick(); navigator.vibrate = saved;
-    return [S.settings.hapticMode, hapticEls.direct.firstChild.checked !== before];
-  }), ["direct", true]);
-  await page.check('#hapMode input[value="faint"]');
-  eq("the drag strip ticks every rep's width of travel", await page.evaluate(() => {
-    const el = document.getElementById("hapStrip"), l = switchEl("faint"); let n = 0;
-    l.firstChild.addEventListener("click", () => n++);
-    const t = x => ({touches:[{clientX:x}]});
-    const fire = (type, x) => { const e = new Event(type); Object.assign(e, t(x)); el.dispatchEvent(e); };
-    fire("touchstart", 100); fire("touchmove", 110); fire("touchmove", 125); fire("touchmove", 150); fire("touchmove", 200);
-    return n;
-  }), 3);
   await page.uncheck("#hap");
-  eq("the ruler's haptics toggle persists", await page.evaluate(() => S.settings.haptics), false);
+  eq("the haptics toggle persists", await page.evaluate(() => S.settings.haptics), false);
+  eq("and takes the switches off the rep sheet's buttons", await page.evaluate(() =>
+    [...document.querySelectorAll(".hbs")].every(i => i.hidden)), true);
   await page.check("#hap");
   await page.uncheck("#snd");
   eq("beep toggle persists", await page.evaluate(() => S.settings.sound), false);
@@ -568,25 +538,23 @@ function serve(){
   });
   eq("scrolling the ruler sets the reps", await page.textContent("#padNum"), "6");
   eq("with one haptic tick per rep passed", ticks, 3);
-  /* iPhone path: no vibrate, so the switch is flipped from the finger's touch events */
-  const iosTicks = await page.evaluate(() => {
-    const saved = navigator.vibrate; navigator.vibrate = undefined;
-    const tr = document.getElementById("padTrack");
-    let n = 0;
-    switchTick(); hapticEl.querySelector("input").addEventListener("click", () => n++);
-    n = 0;
-    const touch = type => tr.dispatchEvent(new Event(type));
-    touch("touchstart");
-    for (const v of [7, 8, 8, 9]){ tr.scrollLeft = v * SPACING; tr.dispatchEvent(new Event("scroll")); touch("touchmove"); }
-    touch("touchend");
-    const scrolledOnly = n;
-    tr.scrollLeft = 6 * SPACING; tr.dispatchEvent(new Event("scroll"));   /* a scroll with no touch */
-    const afterBareScroll = n;
-    navigator.vibrate = saved;
-    return [scrolledOnly, afterBareScroll];
-  });
-  eq("on iPhone the switch ticks once per rep, from the touch", iosTicks[0], 3);
-  eq("and never from a scroll on its own", iosTicks[1], 3);
+  /* iPhone path: a real switch over each button takes the tap */
+  eq("−, + and Log set each carry a real switch", await page.evaluate(() =>
+    ["padMinus", "padPlus", "padLog"].map(id => {
+      const sw = document.querySelector(`[data-for="${id}"]`), b = document.getElementById(id).getBoundingClientRect();
+      const r = sw.getBoundingClientRect();
+      return sw.hasAttribute("switch") && Math.abs(r.width - b.width) < 2 && Math.abs(r.height - b.height) < 2;
+    })), [true, true, true]);
+  eq("a tap on + lands on its switch", await page.evaluate(() => {
+    const r = document.getElementById("padPlus").getBoundingClientRect();
+    return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2).dataset.for;
+  }), "padPlus");
+  const buzz = await page.evaluate(() => { window._bz = 0; navigator.vibrate = () => { window._bz++; return true; }; });
+  await tapBtn(page, "padPlus"); await tapBtn(page, "padPlus"); await tapBtn(page, "padMinus");
+  eq("+ and − step one rep through the switch", await page.textContent("#padNum"), "7");
+  eq("each tap buzzes once on Android, the ruler following without a second buzz", await page.evaluate(() => window._bz), 3);
+  eq("the ruler follows", await page.evaluate(() => Math.round(document.getElementById("padTrack").scrollLeft / SPACING)), 7);
+  await page.locator("#padRange").fill("6");
   await page.evaluate(() => { S.settings.haptics = false; save(); });
   eq("haptics can be turned off", await page.evaluate(() => {
     let n = 0; navigator.vibrate = () => { n++; return true; };
@@ -600,7 +568,7 @@ function serve(){
   eq("tapping a tick scrolls it under the pointer", await page.textContent("#padNum"), "7");
   await page.locator("#padRange").fill("6");
   eq("in range", await page.textContent("#padZone"), "In range");
-  await page.click("#padLog");
+  await tapBtn(page, "padLog");
   await dismissGo(page);
   await page.click('[data-set="0:1"]');
   eq("the next set starts where the last one ended", await page.textContent("#padNum"), "6");

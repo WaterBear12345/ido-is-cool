@@ -41,15 +41,13 @@ Log set. The ruler works like the iOS timer dial: a tick per rep and a number ev
 scroll under a fixed pointer and snap to whole reps, with about fourteen reps in view
 so each one is easy to land on. Ticks up to your number light up, a green bar marks
 the target range, and tapping a tick jumps to it. It runs from zero to well past the
-top of the range and starts where your last set ended. Each rep passed gives a haptic
-tick: a vibration on Android, and on iPhone the system tick that iOS 18 and later play
-for a switch, since iPhone browsers have no vibration API. That tick only fires from
-the finger's own touch, so it follows your finger and stops once the ruler coasts on
-its own. There are several ways to flip a switch nobody sees and iOS answers only
-some of them, so More has a Haptics card: a real switch to check the phone can tick at
-all, tests A to C for three ways of flipping a hidden one, test D for a real touch on
-an invisible switch, a picker for which way the ruler uses, a strip to drag across to
-check ticking mid-drag, and a switch to turn the ruler's ticks off. Every exercise has an icon pairing its equipment with a body figure,
+top of the range and starts where your last set ended. Either side of the number, − and + step one rep at a
+time. On Android the ruler buzzes once per rep as it turns, and the buttons buzz on
+each tap. On iPhone a web app can only get a haptic from a real switch under the
+finger, so the −, + and Log set buttons each carry an invisible switch and tick when
+tapped, while the ruler stays silent as you drag it; only native apps can tick during
+a drag. It needs System Haptics on in iPhone Settings, under Sounds & Haptics, which is
+the default. More has a switch to turn the ticks off. Every exercise has an icon pairing its equipment with a body figure,
 front or back, with the muscle it trains filled in. There are fifteen muscles: chest,
 lats, upper back, lower back, quads, adductors, glutes, hamstrings, calves, biceps,
 triceps, shoulders, rear delts, abs and obliques. Each is coloured by its region
