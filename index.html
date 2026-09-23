@@ -20,7 +20,11 @@
   --head:#101418; --head-sub:#9aa4af; --field:#f2f4f6;
   --done:#f2f8f4; --hit:#dcefe3; --inrange:#dbe6f5; --spark:#c3ccd6; --navbg:rgba(255,255,255,.94);
   --p25:#c8102e; --p20:#0057b8; --p15:#ffd100; --p10:#009639; --p5:#f2f4f6; --p2:#8a929b;
-  --ok:#00743a; --bar:#8a929b; --accent:#0057b8;
+  --ok:#00743a; --bar:#8a929b; --accent:#0057b8; --zone:#b3cbeb; --wash:rgba(0,87,184,.10);
+  /* muscle groups, fixed order chest back legs arms shoulders core; validated for CVD and contrast */
+  --g-chest:#c8102e; --g-back:#0057b8; --g-legs:#009639; --g-arms:#8a4fd8; --g-shoulders:#b98000;
+  --g-core:#0094a8; --g-other:#69727d;
+  --go:#0a7f3f; --go2:#12a352;
   --pad-b:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){
@@ -28,7 +32,9 @@
     --ground:#12161a; --panel:#1c2127; --ink:#eef1f4; --steel:#98a2ad; --hair:#2d343c;
     --head:#0b0e11; --head-sub:#8a949f; --field:#12161a;
     --done:#1b2a22; --hit:#1f3a2b; --inrange:#1e2f47; --spark:#3a434d; --navbg:rgba(28,33,39,.94);
-    --ok:#4cc27e; --p5:#e6e8eb; --accent:#4d8fe0;
+    --ok:#4cc27e; --p5:#e6e8eb; --accent:#4d8fe0; --zone:#2c4f80; --wash:rgba(77,143,224,.14);
+    --g-chest:#e84a5c; --g-back:#4a8ade; --g-legs:#2aa358; --g-arms:#976fe3; --g-shoulders:#b8871f;
+    --g-core:#189db0; --g-other:#98a2ad;
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -43,7 +49,7 @@ body{
 }
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select{font:inherit;color:inherit}
-.hide{display:none !important}
+.hide,[hidden]{display:none !important}
 .primary{background:var(--ink) !important;color:var(--ground) !important}
 
 /* ── header ───────────────────────────────────────────── */
@@ -75,7 +81,15 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 .ex{background:var(--panel);border-radius:14px;margin-bottom:10px;overflow:hidden;
     box-shadow:0 1px 0 var(--hair)}
 .ex.done{background:var(--done)}
-.ex-head{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left}
+.ex-head{display:flex;align-items:center;gap:12px;padding:12px 14px;width:100%;text-align:left}
+
+/* ── exercise icon: equipment glyph, tinted by muscle group ── */
+.ico{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;position:relative}
+.ico::before{content:"";position:absolute;inset:0;border-radius:inherit;background:currentColor;opacity:.13}
+.ico svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;
+         stroke-linecap:round;stroke-linejoin:round;position:relative}
+.ico.sm{width:34px;height:34px;border-radius:10px}
+.ico.sm svg{width:20px;height:20px}
 .ex-name{flex:1;min-width:0}
 .ex-name b{display:block;font-size:16px;font-weight:600;line-height:1.25}
 .ex-name span{display:block;font-size:13px;color:var(--steel);margin-top:1px}
@@ -92,13 +106,26 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 .adj button{width:42px;height:42px;border-radius:11px;background:var(--ground);
             font-size:21px;font-weight:600;display:grid;place-items:center}
 .adj button:active{background:var(--hair)}
-.reprange{font-size:14px;color:var(--steel);margin:2px 0 0}
-.reprange b{color:var(--ink);font-weight:600}
+.reprange{font-size:14px;color:var(--steel);margin:4px 0 0;display:flex;align-items:center;gap:10px}
+.reprange span{flex:1;min-width:0}
+.reprange b{color:var(--ink);font-weight:700}
+.link{font-size:13px;font-weight:600;color:var(--accent);padding:4px 0}
+.rredit{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:var(--field)}
+.rredit label{display:block;font-size:11.5px;font-weight:600;color:var(--steel);margin-bottom:4px}
+.rredit .stp button{background:var(--panel)}
+.rredit .hint{grid-column:1/-1;margin:0}
 
-.plates{display:flex;align-items:center;gap:3px;margin:16px 0 4px;min-height:46px}
-.plate{width:15px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.14)}
-.plates .barline{height:6px;background:var(--bar);border-radius:3px;flex:1;min-width:22px}
-.plates .cap{font-size:12px;color:var(--steel);margin-left:8px;line-height:1.3}
+.plates{margin:14px 0 0}
+.plates svg{display:block;width:100%;height:auto}
+.plates .shaft{fill:var(--bar)}
+.plates .collar{fill:var(--steel)}
+.plates .pl8{stroke:rgba(0,0,0,.22);stroke-width:1}
+.platechips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--steel)}
+.pc{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 6px;border-radius:99px;
+    background:var(--ground);color:var(--ink);font-weight:700;font-size:12.5px}
+.pc i{width:10px;height:10px;border-radius:3px;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.barkg{margin-left:auto;height:28px;padding:0 10px;border-radius:99px;border:1px solid var(--hair);
+       font-size:12.5px;font-weight:600;color:var(--steel)}
 .nobar{font-size:13px;color:var(--steel);margin:14px 0 0}
 
 .sets{display:flex;gap:8px;margin-top:16px}
@@ -123,17 +150,29 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
      transform:translateY(102%);transition:transform .22s cubic-bezier(.32,.72,0,1);
      max-width:640px;margin:0 auto}
 .pad.on{transform:none}
+.padhead{display:flex;align-items:flex-start;gap:12px}
+.padhead div{flex:1;min-width:0}
 .pad h3{margin:0 0 2px;font-size:16px;font-weight:600}
-.pad p{margin:0 0 14px;font-size:13.5px;color:var(--steel)}
-.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.keys button{height:56px;border-radius:12px;background:var(--ground);
-             font-size:21px;font-weight:700}
-.keys button.inrange{background:var(--inrange)}
-.keys button.top{background:var(--p20);color:#fff}
-.keys button:active{opacity:.7}
-.padfoot{display:flex;gap:8px;margin-top:10px}
-.padfoot button{flex:1;height:46px;border-radius:12px;background:var(--ground);
-                font-size:15px;font-weight:600}
+.pad p{margin:0;font-size:13.5px;color:var(--steel)}
+#padClose{width:34px;height:34px;border-radius:50%;background:var(--ground);font-size:15px;flex:none;color:var(--steel)}
+.big{font-size:88px;font-weight:800;letter-spacing:-.05em;line-height:1;text-align:center;margin:14px 0 2px;
+     font-variant-numeric:proportional-nums}
+.zone{text-align:center;font-size:13.5px;font-weight:600;color:var(--steel);min-height:19px}
+.zone.in{color:var(--accent)}
+.zone.top{color:var(--ok)}
+.slide{display:flex;align-items:flex-start;gap:10px;margin:18px 0 6px}
+.slide > button{width:44px;height:44px;border-radius:12px;background:var(--ground);font-size:22px;font-weight:600;flex:none;margin-top:-8px}
+.rng{flex:1;position:relative;height:44px}
+.rng input{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0;display:block}
+.rng input::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:var(--track)}
+.rng input::-moz-range-track{height:10px;border-radius:5px;background:var(--track)}
+.rng input::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--panel);
+     border:3px solid var(--ink);margin-top:-9px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.rng input::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--panel);border:3px solid var(--ink)}
+.rng .tk{position:absolute;top:30px;font-size:11px;font-weight:600;color:var(--steel);transform:translateX(-50%)}
+.padfoot{display:flex;gap:8px;margin-top:8px}
+.padfoot button{flex:1;height:50px;border-radius:13px;background:var(--ground);font-size:15.5px;font-weight:600}
+.padfoot button.primary{flex:2}
 
 /* ── finish bar ───────────────────────────────────────── */
 .finish{margin:18px 2px 0}
@@ -161,6 +200,19 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .timer button{height:36px;padding:0 11px;border-radius:9px;background:var(--ground);font-size:13px;font-weight:600;flex:none}
 .timer.over{background:var(--hit)}
 .timer.over .tt b{color:var(--ok)}
+
+.go{position:fixed;inset:0;z-index:70;background:var(--go);color:#fff;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;gap:8px;cursor:pointer;
+    padding:calc(env(safe-area-inset-top,0px) + 24px) 28px calc(env(safe-area-inset-bottom,0px) + 24px);
+    animation:gopulse .9s ease-in-out 4}
+.go b{font-size:112px;font-weight:900;letter-spacing:-.05em;line-height:.9}
+.go p{margin:0;font-size:18px;font-weight:600}
+.go small{font-size:14px;opacity:.85}
+.goacts{display:flex;gap:10px;margin-top:26px}
+.goacts button{height:50px;padding:0 22px;border-radius:14px;background:rgba(255,255,255,.2);color:#fff;
+               font-weight:700;font-size:16px}
+.goacts button.solid{background:#fff;color:#075c2e}
+@keyframes gopulse{0%,100%{background:var(--go)}50%{background:var(--go2)}}
 
 .setctl{display:flex;align-items:center;gap:8px;margin-top:10px}
 .setctl span{flex:1;text-align:center;font-size:12.5px;color:var(--steel)}
@@ -196,18 +248,46 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .pick button{background:var(--panel);border-radius:13px;padding:15px 13px;text-align:left}
 .pick button b{display:block;font-size:15.5px;font-weight:600}
 .pick button span{display:block;font-size:12.5px;color:var(--steel);margin-top:2px}
+.pick .gdots{display:flex;gap:4px;margin-top:9px}
+.pick .gdots i{width:8px;height:8px;border-radius:50%;display:block}
 
 /* ── progress ─────────────────────────────────────────── */
 .prow{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:7px;
       display:flex;align-items:center;gap:12px;width:100%;text-align:left}
-.prow .nm{flex:1;min-width:0;font-size:15px;font-weight:500}
+.prow .nm{flex:1;min-width:0;font-size:15px;font-weight:600}
 .prow .nm em{display:block;font-style:normal;font-size:12.5px;color:var(--steel);margin-top:1px}
 .prow .now{font-size:19px;font-weight:700}
 .prow .dlt{font-size:13px;font-weight:700;color:var(--ok);min-width:52px;text-align:right}
 .prow .dlt.flat{color:var(--hair)}
-.spark{display:flex;align-items:flex-end;gap:2px;height:26px;width:64px}
-.spark i{flex:1;background:var(--spark);border-radius:1px;min-height:2px;display:block}
-.spark i.up{background:var(--accent)}
+.spark{width:58px;height:24px;flex:none;overflow:visible}
+.spark path{fill:none;stroke:var(--spark);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.spark circle{fill:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--panel);border-radius:13px;padding:11px 12px}
+.stat span{display:block;font-size:11.5px;color:var(--steel);font-weight:600}
+.stat b{display:block;font-size:22px;font-weight:700;letter-spacing:-.02em;margin-top:2px;
+        font-variant-numeric:proportional-nums}
+.stat b small{font-size:12px;font-weight:600;color:var(--steel);margin-left:2px}
+.chart{position:relative;background:var(--panel);border-radius:14px;padding:14px 14px 8px;margin-bottom:10px}
+.detail .chart{padding:12px 0 4px;margin:0;border-radius:0}
+.chart h2{margin:0;font-size:15px;font-weight:600}
+.chart .sub{font-size:12.5px;color:var(--steel);margin:1px 0 8px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y;outline:none}
+.chart .ax{font-size:10.5px;fill:var(--steel)}
+.chart .lbl{font-size:11.5px;font-weight:700;fill:var(--ink)}
+.chart .grid{stroke:var(--hair);stroke-width:1}
+.chart .col{fill:var(--accent)}
+.chart .col.dim{opacity:.55}
+.chart .ln{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chart .area{fill:var(--wash)}
+.chart .dot{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.chart .xh{stroke:var(--steel);stroke-width:1;opacity:0}
+.chart .xh.on{opacity:.6}
+.chart .hit{fill:transparent}
+.tip{position:absolute;left:0;top:0;pointer-events:none;background:var(--ink);color:var(--ground);border-radius:9px;
+     padding:6px 9px;font-size:12px;line-height:1.35;white-space:nowrap;opacity:0;transition:opacity .12s;z-index:2}
+.tip b{display:block;font-size:14px}
+.tip.on{opacity:1}
 .detail{background:var(--panel);border-radius:12px;padding:4px 14px 12px;margin:-4px 0 8px;
         border-top:1px solid var(--hair)}
 .drow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair);font-size:13.5px}
@@ -232,6 +312,7 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
     border-top:1px solid var(--hair)}
 .sess-head + .pl{border-top:0}
 .pl .nm{flex:1;min-width:0}
+.pl .nm b{line-height:1.25}
 .pl .nm b{display:block;font-size:15px;font-weight:600}
 .pl .nm span{display:block;font-size:12.5px;color:var(--steel);margin-top:1px}
 .pl .kg{font-size:17px;font-weight:700;white-space:nowrap}
@@ -248,6 +329,29 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .stp button{width:42px;height:42px;border-radius:10px;background:var(--panel);border:1px solid var(--hair);
             font-size:19px;font-weight:600;flex:none}
 .stp b{flex:1;text-align:center;font-size:17px}
+.f .stp input{flex:1;min-width:0;text-align:center;padding:0;font-weight:700;-moz-appearance:textfield}
+.stp input::-webkit-inner-spin-button,.stp input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.f .chips label{position:relative;display:inline-flex;align-items:center;gap:6px;margin:0;padding:7px 12px 7px 10px;
+     border-radius:99px;background:var(--panel);border:1px solid var(--hair);font-size:13.5px;font-weight:600;color:var(--ink)}
+.chips i{width:10px;height:10px;border-radius:50%;display:block}
+.chips label:has(input:checked){box-shadow:inset 0 0 0 2px var(--ink);border-color:var(--ink)}
+.seg{display:flex;gap:3px;background:var(--panel);border:1px solid var(--hair);border-radius:11px;padding:3px}
+.f .seg label{position:relative;flex:1;text-align:center;margin:0;padding:9px 4px;border-radius:8px;
+     font-size:13.5px;font-weight:600;color:var(--steel)}
+.seg label:has(input:checked){background:var(--ink);color:var(--ground)}
+.chips input,.seg input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer}
+.f .sw{display:flex;align-items:center;gap:12px;margin:0;background:var(--panel);border:1px solid var(--hair);
+       border-radius:11px;padding:10px 12px;cursor:pointer}
+.sw span{flex:1;min-width:0}
+.sw span b{display:block;font-size:14.5px;font-weight:600;color:var(--ink)}
+.sw span small{display:block;font-size:12px;font-weight:500;color:var(--steel);margin-top:1px}
+.f .sw input{-webkit-appearance:none;appearance:none;width:48px;height:29px;border-radius:15px;border:0;padding:0;
+       background:var(--hair);position:relative;flex:none;margin:0;cursor:pointer;transition:background .15s}
+.sw input::after{content:"";position:absolute;top:3px;left:3px;width:23px;height:23px;border-radius:50%;background:#fff;
+       box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.f .sw input:checked{background:var(--ok)}
+.sw input:checked::after{transform:translateX(19px)}
 .acts{display:flex;gap:8px;margin-top:12px}
 .acts button{flex:1;height:42px;border-radius:10px;background:var(--panel);border:1px solid var(--hair);
              font-size:14px;font-weight:600}
@@ -255,7 +359,7 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .acts button.primary{border-color:var(--ink)}
 .addex{margin:6px 10px 10px;height:44px;border-radius:10px;background:var(--ground);
        width:calc(100% - 20px);font-size:14.5px;font-weight:600}
-@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 </style>
 </head>
 <body>
@@ -268,14 +372,28 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 <main id="view"></main>
 
 <div class="scrim" id="scrim"></div>
-<div class="pad" id="pad">
-  <h3 id="padTitle"></h3>
-  <p id="padSub"></p>
-  <div class="keys" id="padKeys"></div>
-  <div class="padfoot">
-    <button id="padClear">Clear this set</button>
-    <button id="padClose">Done</button>
+<div class="pad" id="pad" role="dialog" aria-modal="true" aria-labelledby="padTitle">
+  <div class="padhead">
+    <div><h3 id="padTitle"></h3><p id="padSub"></p></div>
+    <button id="padClose" aria-label="Close">✕</button>
   </div>
+  <div class="big" id="padNum" aria-live="polite">0</div>
+  <div class="zone" id="padZone"></div>
+  <div class="slide">
+    <button id="padMinus" aria-label="One rep fewer">−</button>
+    <div class="rng"><input type="range" id="padRange" min="0" max="30" step="1" aria-label="Reps"><div id="padTicks"></div></div>
+    <button id="padPlus" aria-label="One rep more">+</button>
+  </div>
+  <div class="padfoot">
+    <button id="padClear">Clear set</button>
+    <button id="padLog" class="primary">Log set</button>
+  </div>
+</div>
+<div class="go hide" id="go" role="alertdialog" aria-labelledby="goTitle">
+  <b id="goTitle">GO</b>
+  <p id="goNext"></p>
+  <small>Rest is over. Tap anywhere to carry on.</small>
+  <div class="goacts"><button id="goMore">+15 s</button><button id="goDone" class="solid">Next set</button></div>
 </div>
 <input type="file" id="file" accept=".json,application/json" class="hide">
 
@@ -309,12 +427,34 @@ const PLATES = [
   [25,"var(--p25)",44],[20,"var(--p20)",42],[15,"var(--p15)",38],
   [10,"var(--p10)",34],[5,"var(--p5)",28],[2.5,"var(--p2)",23],[1.25,"var(--p2)",18]
 ];
-const GCOL = ["var(--p25)","var(--p20)","var(--p10)","var(--p15)"];
 const MAXSETS = 6;
+const BARS = [20, 25];
+/* Muscle groups in their fixed colour order. The colour tints an exercise's icon. */
+const GROUPS = {chest:"Chest", back:"Back", legs:"Legs", arms:"Arms", shoulders:"Shoulders", core:"Core"};
+const GROUP_ORDER = Object.keys(GROUPS);
+const gcol = g => `var(--g-${GROUPS[g] ? g : "other"})`;
+const KINDS = [["db","Dumbbells"],["machine","Machine"],["cable","Cable"]];
+/* Guess a group from a name; first match wins, so "leg raise" is core and "leg curl" is legs. */
+const GUESS = [["core",/crunch|plank|\bab|sit.?up|leg raise|hanging/i],
+  ["legs",/squat|leg|calf|lunge|rdl|deadlift|hip|glute|hamstring|quad|step.?up/i],
+  ["arms",/curl|tricep|extension|pushdown|dip|skull/i],
+  ["shoulders",/shoulder|lateral|lat raise|face pull|overhead press|ohp|rear delt|shrug|upright/i],
+  ["back",/row|pull|\blat|chin|back/i],
+  ["chest",/bench|chest|fl(y|ies)|push.?up|pec|press/i]];
+const guessGroup = name => (GUESS.find(([, re]) => re.test(name || "")) || ["other"])[0];
+/* Equipment glyphs, 24px grid. */
+const ICONS = {
+  bar:'<path d="M1.5 12h21"/><path d="M5 8.5v7M8 6v12M16 6v12M19 8.5v7"/>',
+  db:'<g transform="rotate(-45 12 12)"><path d="M8.5 12h7"/><path d="M5 9v6M8.2 7v10M15.8 7v10M19 9v6"/></g>',
+  machine:'<path d="M12 1.5V5"/><rect x="5" y="5" width="14" height="4" rx="1.2"/><rect x="5" y="10.5" width="14" height="4" rx="1.2"/><rect x="5" y="16" width="14" height="4" rx="1.2"/><path d="M19 12.5h2.5"/>',
+  cable:'<circle cx="12" cy="5" r="2.6"/><path d="M12 7.6V15"/><path d="M8.3 15h7.4l-1.3 5H9.6z"/>'
+};
+const icon = (e, cls = "") => `<span class="ico ${cls}" style="color:${gcol(e.group)}" aria-hidden="true">`
+  + `<svg viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg></span>`;
 
 /* ── default programme, starting weights as of 6 Sep 2026 ──────────────
-   kind: "bar" = barbell (20 kg bar, plate maths), "db" = dumbbells (per hand),
-   "machine" = pin or cable stack. Two sessions that reference the same key
+   kind: "bar" = barbell with plate maths on a barKg bar, "db" = dumbbells (per
+   hand), "machine" = pin-loaded machine, "cable" = cable stack. Two sessions that reference the same key
    share one weight — that is how linking works. Unlinked repeats use
    distinct keys (tripushA/B, legcurlA/B, calfA/B, squat/squatback). */
 const DEFAULT_EX = {
@@ -347,7 +487,18 @@ const DEFAULT_EX = {
 /* Rest between sets, in seconds. Compounds get longer; anything not listed is an isolation. */
 const DEFAULT_REST = {squat:180, rdl:150, bench:150, squatback:120, splitsquat:120, incline:120,
                       pulldown:90, lowrow:90, ohp:90, crunch:60};
-for (const k in DEFAULT_EX) DEFAULT_EX[k].rest = DEFAULT_REST[k] || 75;
+const DEFAULT_GROUP = {bench:"chest", incline:"chest", flies:"chest", pulldown:"back", lowrow:"back",
+  ohp:"shoulders", latraise:"shoulders", facepull:"shoulders", tripushA:"arms", tripushB:"arms",
+  preacher:"arms", hammer:"arms", crunch:"core"};
+const CABLE = ["pulldown", "lowrow", "facepull", "tripushA", "tripushB", "crunch"];
+const DEFAULT_BAR = {squat:25, squatback:25};      /* the squat rack's bar is 25 kg */
+for (const k in DEFAULT_EX){
+  const e = DEFAULT_EX[k];
+  e.rest = DEFAULT_REST[k] || 75;
+  e.group = DEFAULT_GROUP[k] || "legs";
+  e.barKg = DEFAULT_BAR[k] || BARBELL;
+  if (CABLE.includes(k)) e.kind = "cable";
+}
 const REST_OPTS = [45, 60, 75, 90, 120, 150, 180, 240, 300];
 /* day: 0 = Monday … 6 = Sunday, null = unscheduled. plan: [exerciseKey, sets] */
 const DEFAULT_SESSIONS = {
@@ -397,6 +548,11 @@ function migrate(o){
     const e = n.prog.ex[k];
     if (!e.kind) e.kind = e.bar ? "bar" : (e.db ? "db" : "machine");
     if (!(e.rest > 0)) e.rest = DEFAULT_REST[k] || (e.kind === "bar" ? 150 : 75);
+    if (!e.group){                   /* first load after groups existed: fill them in once */
+      e.group = DEFAULT_GROUP[k] || (DEFAULT_EX[k] ? "legs" : guessGroup(e.name));
+      if (e.kind === "machine" && CABLE.includes(k)) e.kind = "cable";
+    }
+    if (!BARS.includes(e.barKg)) e.barKg = DEFAULT_BAR[k] || BARBELL;
     if (typeof n.weights[k] !== "number") n.weights[k] = e.start;
   }
   for (const r of n.history){
@@ -493,8 +649,8 @@ function weekNo(){
   a.setDate(a.getDate() - dow(a)); b.setDate(b.getDate() - dow(b));
   return Math.floor(Math.round((b - a) / 864e5) / 7) + 1;
 }
-function plateBreak(total){
-  let side = (total - BARBELL) / 2;
+function plateBreak(total, bar = BARBELL){
+  let side = (total - bar) / 2;
   if (side < 0) return null;
   const out = [];
   for (const [w, col, h] of PLATES){
@@ -528,13 +684,15 @@ function startSession(id){
     id, date: todayISO(), open: 0,
     log: s.plan.map(([k, n]) => {
       const e = S.prog.ex[k];
-      return {k, name:e.name, lo:e.lo, hi:e.hi, inc:e.inc, kind:e.kind, rest:e.rest, weight:S.weights[k], reps:new Array(n).fill(null)};
+      return {k, name:e.name, lo:e.lo, hi:e.hi, inc:e.inc, kind:e.kind, rest:e.rest, group:e.group, barKg:e.barKg,
+              weight:S.weights[k], reps:new Array(n).fill(null)};
     })
   };
   save(); go("train");
 }
 /* The current programme definition wins; the snapshot covers an exercise deleted mid-session. */
-const liveDef = x => S.prog.ex[x.k] || {name:x.name, lo:x.lo, hi:x.hi, inc:x.inc, kind:x.kind, rest:x.rest};
+const liveDef = x => S.prog.ex[x.k]
+  || {name:x.name, lo:x.lo, hi:x.hi, inc:x.inc, kind:x.kind, rest:x.rest, group:x.group, barKg:x.barKg || BARBELL};
 
 function hitTop(entry){
   const e = liveDef(entry);
@@ -558,7 +716,7 @@ function finishSession(){
   const rec = {date:L.date, id:L.id, name:sessName({id:L.id}),
                entries:entries.map(x => ({k:x.k, name:exName(x), weight:x.weight, reps:x.reps}))};
   S.history.unshift(rec);
-  S.live = null;
+  S.live = null; rrOpen = -1;
   save();
   toast(gains.length ? `Saved. ${gains.length} weight${gains.length > 1 ? "s" : ""} went up.` : "Session saved.");
   if (S.settings.autosave){
@@ -625,9 +783,23 @@ function nudgeRest(d){
   save(); tick();
   if (R.end > Date.now()) acquireWake();
 }
+/* What the next set is, for the go screen: the first empty set from the open exercise on. */
+function nextUp(){
+  const L = S.live;
+  if (!L) return "";
+  const n = L.log.length, from = L.open >= 0 ? L.open : 0;
+  for (let j = 0; j < n; j++){
+    const x = L.log[(from + j) % n], si = x.reps.indexOf(null);
+    if (si >= 0) return `Next: ${liveDef(x).name}, set ${si + 1} at ${kg(x.weight)} kg`;
+  }
+  return "";
+}
 function tick(){
   clearTimeout(tickT);
-  const el = document.getElementById("rest"), R = S.live && S.live.rest;
+  const el = document.getElementById("rest"), goEl = document.getElementById("go"), R = S.live && S.live.rest;
+  const over = !!R && R.end <= Date.now() && Date.now() - R.end <= 12000;
+  if (over && goEl.classList.contains("hide")) document.getElementById("goNext").textContent = nextUp();
+  goEl.classList.toggle("hide", !over);
   if (!R){ el.classList.add("hide"); releaseWake(); return; }
   const left = Math.ceil((R.end - Date.now()) / 1000);
   el.classList.remove("hide");
@@ -646,6 +818,9 @@ function tick(){
 document.getElementById("restMinus").onclick = () => { ensureAudio(); nudgeRest(-15); };
 document.getElementById("restPlus").onclick = () => { ensureAudio(); nudgeRest(15); };
 document.getElementById("restSkip").onclick = stopRest;
+document.getElementById("go").onclick = stopRest;           /* tap anywhere */
+document.getElementById("goDone").onclick = ev => { ev.stopPropagation(); stopRest(); };
+document.getElementById("goMore").onclick = ev => { ev.stopPropagation(); ensureAudio(); nudgeRest(15); };
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
   tick();
@@ -656,33 +831,60 @@ document.addEventListener("visibilitychange", () => {
 let padCtx = null;
 const scrim = document.getElementById("scrim"), pad = document.getElementById("pad");
 
+const range = document.getElementById("padRange");
+/* A slider position as a CSS length, corrected for the thumb so ticks sit under its centre. */
+const THUMB = 28;
+const posAt = (n, max) => { const f = n / max; return `calc(${(f * 100).toFixed(2)}% + ${((0.5 - f) * THUMB).toFixed(1)}px)`; };
+/* Best first guess for a set: what is already there, else the set before it this session,
+   else the same set last time, else the bottom of the range. */
+function guessReps(x, si, e){
+  if (x.reps[si] !== null) return x.reps[si];
+  for (let j = si - 1; j >= 0; j--) if (x.reps[j] !== null) return x.reps[j];
+  const last = S.history.find(r => r.entries.some(y => y.k === x.k));
+  if (last){
+    const y = last.entries.find(z => z.k === x.k), v = y.reps[si] ?? y.reps.filter(r => r !== null).pop();
+    if (typeof v === "number") return v;
+  }
+  return e.lo;
+}
+function setPadVal(n){
+  const x = S.live.log[padCtx.ei], e = liveDef(x), max = +range.max;
+  n = Math.max(0, Math.min(max, Math.round(n)));
+  padCtx.n = n; range.value = n;
+  document.getElementById("padNum").textContent = n;
+  const z = document.getElementById("padZone");
+  z.className = "zone" + (n >= e.hi ? " top" : n >= e.lo ? " in" : "");
+  z.textContent = n >= e.hi ? "Top of the range" : n >= e.lo ? "In range" : `${e.lo - n} short of the range`;
+}
 function openPad(ei, si){
   padCtx = {ei, si};
-  const x = S.live.log[ei], e = liveDef(x);
-  document.getElementById("padTitle").textContent = `${e.name} — set ${si + 1}`;
+  const x = S.live.log[ei], e = liveDef(x), max = Math.max(30, e.hi + 10);
+  document.getElementById("padTitle").textContent = e.name;
   document.getElementById("padSub").textContent =
-    `${kg(x.weight)} kg, aiming for ${e.lo}–${e.hi} reps`;
-  const keys = document.getElementById("padKeys");
-  keys.innerHTML = "";
-  const from = Math.max(1, e.lo - 3), to = e.hi + 4;
-  for (let n = from; n <= to; n++){
-    const b = document.createElement("button");
-    b.textContent = n;
-    if (n >= e.hi) b.className = "top";
-    else if (n >= e.lo) b.className = "inrange";
-    b.onclick = () => {
-      x.reps[si] = n;
-      save();
-      ensureAudio();                      /* a tap is the gesture iOS needs before any sound */
-      closePad();
-      const allDone = S.live.log.every(y => y.reps.every(r => r !== null));
-      if (allDone) stopRest(); else startRest(x);
-      render();
-    };
-    keys.appendChild(b);
-  }
+    `Set ${si + 1} of ${x.reps.length} · ${kg(x.weight)} kg · target ${e.lo}–${e.hi}`;
+  range.max = max;
+  range.style.setProperty("--track", `linear-gradient(to right, var(--hair) 0 ${posAt(e.lo, max)},
+    var(--zone) ${posAt(e.lo, max)} ${posAt(e.hi, max)}, var(--hair) ${posAt(e.hi, max)} 100%)`);
+  document.getElementById("padTicks").innerHTML = (e.lo === e.hi ? [e.hi] : [e.lo, e.hi])
+    .map(n => `<span class="tk" style="left:${posAt(n, max)}">${n}</span>`).join("");
+  setPadVal(guessReps(x, si, e));
   scrim.classList.add("on"); pad.classList.add("on");
 }
+function logRep(){
+  if (!padCtx) return;
+  const x = S.live.log[padCtx.ei];
+  x.reps[padCtx.si] = padCtx.n;
+  save();
+  ensureAudio();                      /* a tap is the gesture iOS needs before any sound */
+  closePad();
+  const allDone = S.live.log.every(y => y.reps.every(r => r !== null));
+  if (allDone) stopRest(); else startRest(x);
+  render();
+}
+range.oninput = () => setPadVal(+range.value);
+document.getElementById("padMinus").onclick = () => setPadVal(padCtx.n - 1);
+document.getElementById("padPlus").onclick = () => setPadVal(padCtx.n + 1);
+document.getElementById("padLog").onclick = logRep;
 function closePad(){ padCtx = null; scrim.classList.remove("on"); pad.classList.remove("on"); }
 scrim.onclick = closePad;
 document.getElementById("padClose").onclick = closePad;
@@ -693,8 +895,9 @@ document.getElementById("padClear").onclick = () => {
 };
 
 /* ── views ─────────────────────────────────────────────────────────────── */
-let tab = "train", edit = null, openKey = null, openHist = null;
+let tab = "train", edit = null, openKey = null, openHist = null, rrOpen = -1;
 function go(t){
+  if (t !== tab) window.scrollTo(0, 0);      /* a new tab opens at its top, not mid-page */
   tab = t;
   document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   render();
@@ -794,8 +997,11 @@ function pickView(){
   h += `<div class="grp">Or pick a session</div><div class="pick">`;
   for (const id of S.prog.order){
     const s = S.prog.sessions[id];
+    const gs = [...new Set(s.plan.map(([k]) => S.prog.ex[k].group))]
+      .sort((a, b) => GROUP_ORDER.indexOf(a) - GROUP_ORDER.indexOf(b));
     h += `<button data-start="${id}"><b>${esc(s.name)}</b>
-      <span>${setsOf(s)} sets${hasDay(s) ? " · " + DAYFULL[s.day] : ""}</span></button>`;
+      <span>${setsOf(s)} sets${hasDay(s) ? " · " + DAYFULL[s.day] : ""}</span>
+      <span class="gdots" aria-hidden="true">${gs.map(g => `<i style="background:${gcol(g)}"></i>`).join("")}</span></button>`;
   }
   h += `</div>`;
   if (S.history.length){
@@ -816,6 +1022,7 @@ function liveView(){
     const e = liveDef(x), done = x.reps.every(r => r !== null), open = L.open === i;
     h += `<div class="ex${done && !open ? " done" : ""}">
       <button class="ex-head" data-open="${i}">
+        ${icon(e)}
         <div class="ex-name"><b>${esc(e.name)}</b><span>${x.reps.length} set${x.reps.length === 1 ? "" : "s"}, ${e.lo}–${e.hi} reps · rest ${mmss(e.rest || 75)}</span></div>
         <div class="ex-kg">${kg(x.weight)}<small>kg</small></div>
         ${done ? '<div class="tick">✓</div>' : ""}
@@ -825,8 +1032,10 @@ function liveView(){
         <div class="hero"><div class="kg">${kg(x.weight)}</div><div class="unit">kg</div>
           <div class="adj"><button data-w="${i}:-1" aria-label="Lighter">−</button><button data-w="${i}:1" aria-label="Heavier">+</button></div>
         </div>
-        <p class="reprange">Every set at <b>${e.hi} reps</b> and this goes up ${kg(e.inc)} kg</p>
-        ${plateRow(x.weight, e)}
+        <div class="reprange"><span>Target <b>${e.lo}–${e.hi}</b> reps · all sets at ${e.hi} adds ${kg(e.inc)} kg</span>
+          <button class="link" data-rr="${i}">${rrOpen === i ? "Done" : "Edit"}</button></div>
+        ${rrOpen === i ? rrEditor(i, e) : ""}
+        ${plateRow(x.weight, e, i)}
         <div class="sets">`;
       x.reps.forEach((r, si) => {
         const cls = r === null ? "set empty" : (r >= e.hi ? "set hit" : "set");
@@ -854,22 +1063,55 @@ function liveView(){
   return h;
 }
 
-function plateRow(total, e){
-  if (e.kind !== "bar"){
-    if (e.kind === "db") return `<p class="nobar">${kg(total)} kg in each hand</p>`;
-    return `<p class="nobar">Set the pin to ${kg(total)} kg</p>`;
+function rrEditor(i, e){
+  const shared = usedIn(liveKey(i)).length > 1;
+  const stp = (end, v) => `<div class="stp"><button data-rrb="${i}:${end}:-1" aria-label="Lower">−</button>
+    <b>${v}</b><button data-rrb="${i}:${end}:1" aria-label="Higher">+</button></div>`;
+  return `<div class="rredit"><div><label>Reps from</label>${stp("lo", e.lo)}</div>
+    <div><label>Reps to</label>${stp("hi", e.hi)}</div>
+    ${shared ? `<p class="hint">Shared with another session, so it changes there too.</p>` : ""}</div>`;
+}
+const liveKey = i => S.live.log[i].k;
+/* Plate width and drawn height per plate, in the drawing's 320-wide units. */
+const PLATE_W = {25:13, 20:12, 15:11, 10:10, 5:8, 2.5:6, 1.25:5};
+const PLATE_H = {25:74, 20:70, 15:64, 10:57, 5:46, 2.5:37, 1.25:30};
+function plateRow(total, e, i){
+  if (e.kind === "db") return `<p class="nobar">${kg(total)} kg in each hand</p>`;
+  if (e.kind !== "bar") return `<p class="nobar">Set the pin to ${kg(total)} kg</p>`;
+  const bar = e.barKg || BARBELL, b = plateBreak(total, bar);
+  const barBtn = i === undefined ? "" :
+    `<button class="barkg" data-barkg="${i}" aria-label="Bar weight, tap to switch">${bar} kg bar ⇄</button>`;
+  if (!b) return `<div class="platechips">Lighter than the ${bar} kg bar on its own${barBtn}</div>`;
+  if (!b.plates.length) return `<div class="platechips">Just the empty ${bar} kg bar${barBtn}</div>`;
+  /* A bar as it looks: a long grip between two collars near the ends, plates loaded
+     outward from each collar, heaviest innermost. Very heavy loads narrow to fit. */
+  const cy = 42, start = 251, room = 318 - start;
+  const need = b.plates.reduce((a, [w]) => a + PLATE_W[w] + 1.5, 0), fit = Math.min(1, room / need);
+  let right = "", left = "", x = start;
+  for (const [w, col] of b.plates){
+    const pw = PLATE_W[w] * fit, ph = PLATE_H[w];
+    right += `<rect class="pl8" x="${x.toFixed(1)}" y="${cy - ph / 2}" width="${pw.toFixed(1)}" height="${ph}" rx="2" style="fill:${col}"/>`;
+    left  += `<rect class="pl8" x="${(320 - x - pw).toFixed(1)}" y="${cy - ph / 2}" width="${pw.toFixed(1)}" height="${ph}" rx="2" style="fill:${col}"/>`;
+    x += pw + 1.5 * fit;
   }
-  const b = plateBreak(total);
-  if (!b) return `<p class="nobar">Lighter than the bar on its own</p>`;
-  if (!b.plates.length) return `<p class="nobar">Empty ${BARBELL} kg bar</p>`;
-  let h = `<div class="plates"><span class="barline"></span>`;
-  for (const [, col, ht] of b.plates)
-    h += `<span class="plate" style="height:${ht}px;background:${col}"></span>`;
   const counts = {};
   for (const [w] of b.plates) counts[w] = (counts[w] || 0) + 1;
-  const txt = Object.keys(counts).sort((a, c) => c - a).map(w => `${counts[w]}×${w}`).join(", ");
-  h += `<span class="cap">per side<br>${txt}${b.left ? ` (+${b.left} short)` : ""}</span></div>`;
-  return h;
+  const ws = Object.keys(counts).map(Number).sort((a, c) => c - a);
+  const said = ws.map(w => `${counts[w] > 1 ? counts[w] + " × " : ""}${w}`).join(", ");
+  return `<div class="plates" data-perside="${b.plates.map(p => p[0]).join(",")}" data-bar="${bar}">
+    <svg viewBox="0 0 320 84" role="img" aria-label="Per side: ${said} kg, on a ${bar} kg bar">
+      <rect class="shaft" x="4" y="37" width="72" height="10" rx="3"/>
+      <rect class="shaft" x="244" y="37" width="72" height="10" rx="3"/>
+      <rect class="shaft" x="76" y="39" width="168" height="6" rx="3"/>
+      <rect class="collar" x="239" y="31" width="10" height="22" rx="2"/>
+      <rect class="collar" x="71" y="31" width="10" height="22" rx="2"/>
+      ${left}${right}
+    </svg>
+    <div class="platechips"><span>Per side</span>${ws.map(w => {
+      const col = PLATES.find(p => p[0] === w)[1];
+      return `<span class="pc"><i style="background:${col}"></i>${counts[w] > 1 ? counts[w] + " × " : ""}${w}</span>`;
+    }).join("")}${b.left ? `<span>+${b.left} kg short</span>` : ""}${barBtn}</div>
+  </div>`;
 }
 
 function wireLive(){
@@ -881,6 +1123,21 @@ function wireLive(){
   document.querySelectorAll("[data-set]").forEach(b => b.onclick = () => {
     const [i, si] = b.dataset.set.split(":").map(Number);
     openPad(i, si);
+  });
+  document.querySelectorAll("[data-rr]").forEach(b => b.onclick = () => {
+    const i = +b.dataset.rr; rrOpen = rrOpen === i ? -1 : i; render();
+  });
+  document.querySelectorAll("[data-rrb]").forEach(b => b.onclick = () => {
+    const [i, end, d] = b.dataset.rrb.split(":"), x = S.live.log[+i], e = S.prog.ex[x.k] || x;
+    let lo = e.lo, hi = e.hi;
+    if (end === "lo") lo = Math.max(1, Math.min(hi, lo + +d)); else hi = Math.max(lo, Math.min(50, hi + +d));
+    e.lo = x.lo = lo; e.hi = x.hi = hi;
+    save(); render();
+  });
+  document.querySelectorAll("[data-barkg]").forEach(b => b.onclick = () => {
+    const x = S.live.log[+b.dataset.barkg], e = S.prog.ex[x.k] || x;
+    e.barKg = x.barKg = (e.barKg || BARBELL) === 20 ? 25 : 20;
+    save(); render();
   });
   document.querySelectorAll("[data-nset]").forEach(b => b.onclick = () => {
     const [i, d] = b.dataset.nset.split(":").map(Number), x = S.live.log[i];
@@ -900,7 +1157,7 @@ function wireLive(){
   if (f) f.onclick = finishSession;
   const a = document.getElementById("abandon");
   if (a) a.onclick = () => {
-    if (confirm("Discard this session? Nothing will be saved.")){ S.live = null; save(); render(); }
+    if (confirm("Discard this session? Nothing will be saved.")){ S.live = null; rrOpen = -1; save(); render(); }
   };
 }
 
@@ -934,6 +1191,7 @@ function planView(){
     s.plan.forEach(([k, n], i) => {
       const e = S.prog.ex[k], on = !!edit && edit.id === id && edit.i === i;
       h += `<button class="pl${on ? " on" : ""}" data-edit="${id}:${i}">
+        ${icon(e, "sm")}
         <div class="nm"><b>${esc(e.name)}</b>
           <span>${rowSub(k, n)}</span></div>
         <div class="kg">${kg(S.weights[k])}<small>kg</small></div></button>`;
@@ -950,26 +1208,36 @@ function planView(){
   return h;
 }
 
-const kindSel = kind => `<select data-f="kind">
-  <option value="machine"${kind === "machine" ? " selected" : ""}>Machine or cable</option>
-  <option value="bar"${kind === "bar" ? " selected" : ""}>Barbell, ${BARBELL} kg bar</option>
-  <option value="db"${kind === "db" ? " selected" : ""}>Dumbbells, each hand</option></select>`;
+/* The fields shared by the edit and add forms. `a` is extra attributes for every cell. */
+const numStep = (f, v) => `<div class="stp"><button data-bump="${f}:-1" aria-label="Lower">−</button>
+  <input data-f="${f}" type="number" inputmode="numeric" min="1" value="${v}"><button data-bump="${f}:1" aria-label="Higher">+</button></div>`;
+function exFields(e, w, a = "", isNew = false){
+  const bar = e.kind === "bar", kind = KINDS.some(([v]) => v === e.kind) ? e.kind : "machine";
+  return `
+    <div class="wide"${a}><label>Name</label><input data-f="name" value="${esc(e.name || "")}" maxlength="40"
+      ${isNew ? 'placeholder="e.g. Overhead extensions"' : ""}></div>
+    <div class="wide"${a}><label>Muscle group</label><div class="chips">${GROUP_ORDER.map(g =>
+      `<label><input type="radio" name="group" value="${g}"${e.group === g ? " checked" : ""}><i style="background:${gcol(g)}"></i>${GROUPS[g]}</label>`).join("")}</div></div>
+    <div class="wide"${a}><label class="sw"><span><b>Barbell with plates</b><small>Draws the bar and which plates to load</small></span>
+      <input type="checkbox" data-f="barbell"${bar ? " checked" : ""}></label></div>
+    <div class="wide" data-when="bar"${a}${bar ? "" : " hidden"}><label>Bar weight</label><div class="seg">${BARS.map(b =>
+      `<label><input type="radio" name="barKg" value="${b}"${(e.barKg || BARBELL) === b ? " checked" : ""}>${b} kg</label>`).join("")}</div></div>
+    <div class="wide" data-when="nobar"${a}${bar ? " hidden" : ""}><label>Equipment</label><div class="seg">${KINDS.map(([v, l]) =>
+      `<label><input type="radio" name="kind" value="${v}"${kind === v ? " checked" : ""}>${l}</label>`).join("")}</div></div>
+    <div${a}><label>Reps from</label>${numStep("lo", e.lo)}</div>
+    <div${a}><label>Reps to</label>${numStep("hi", e.hi)}</div>
+    <div${a}><label>Increment, kg</label><input data-f="inc" type="number" inputmode="decimal" step="0.5" min="0" value="${e.inc}"></div>
+    <div${a}><label>Rest between sets</label>${restSel(e.rest)}</div>
+    <div class="wide"${a}><label>${isNew ? "Starting" : "Current"} weight, kg</label><input data-f="w" type="number" inputmode="decimal" step="0.5" min="0" value="${w}"></div>`;
+}
+const setsStep = n => `<div class="wide"><label>Sets in this session</label>
+  <div class="stp"><button data-sets="-1" aria-label="Fewer sets">−</button><b>${n}</b><button data-sets="1" aria-label="More sets">+</button></div></div>`;
 
 function editForm(id, i, k, n){
   const e = S.prog.ex[k], shared = usedIn(k).filter(x => x !== id).map(x => S.prog.sessions[x].name);
   return `<div class="edit">
-    <div class="f">
-      <div class="wide"><label>Name</label><input data-f="name" value="${esc(e.name)}" maxlength="40"></div>
-      <div><label>Sets in this session</label>
-        <div class="stp"><button data-sets="-1" aria-label="Fewer sets">−</button><b>${n}</b><button data-sets="1" aria-label="More sets">+</button></div></div>
-      <div><label>Equipment</label>${kindSel(e.kind)}</div>
-      <div><label>Reps from</label><input data-f="lo" type="number" inputmode="numeric" min="1" value="${e.lo}"></div>
-      <div><label>Reps to</label><input data-f="hi" type="number" inputmode="numeric" min="1" value="${e.hi}"></div>
-      <div><label>Increment, kg</label><input data-f="inc" type="number" inputmode="decimal" step="0.5" min="0" value="${e.inc}"></div>
-      <div><label>Rest between sets</label>${restSel(e.rest)}</div>
-      <div class="wide"><label>Current weight, kg</label><input data-f="w" type="number" inputmode="decimal" step="0.5" min="0" value="${S.weights[k]}"></div>
-    </div>
-    ${shared.length ? `<p class="hint">Also in ${esc(listJoin(shared))}. Name, reps, increment and weight are shared; only the set count is per session.</p>` : ""}
+    <div class="f">${setsStep(n)}${exFields(e, S.weights[k])}</div>
+    ${shared.length ? `<p class="hint">Also in ${esc(listJoin(shared))}. Everything but the set count is shared.</p>` : ""}
     <div class="acts">
       <button data-move="-1" aria-label="Move up">↑</button><button data-move="1" aria-label="Move down">↓</button>
       <button class="warn" data-remove>Remove</button><button class="primary" data-save>Save</button></div>
@@ -984,18 +1252,11 @@ function addForm(id){
     const where = u.length ? `shares weight with ${u.map(x => S.prog.sessions[x].name).join(", ")}` : "not in any session";
     return `<option value="${k}">${esc(e.name)}, ${e.lo}–${e.hi} reps, ${kg(S.weights[k])} kg (${esc(where)})</option>`;
   };
+  const fresh = {name:"", lo:8, hi:10, inc:2.5, rest:90, kind:"machine", barKg:BARBELL, group:null};
   return `<div class="edit">
     <div class="f">
       <div class="wide"><label>Exercise</label><select data-f="src"><option value="">New exercise…</option>${others.map(opt).join("")}</select></div>
-      <div class="wide" data-newonly><label>Name</label><input data-f="name" placeholder="e.g. Overhead extensions" maxlength="40"></div>
-      <div><label>Sets in this session</label>
-        <div class="stp"><button data-sets="-1" aria-label="Fewer sets">−</button><b>${edit.n}</b><button data-sets="1" aria-label="More sets">+</button></div></div>
-      <div data-newonly><label>Equipment</label>${kindSel("machine")}</div>
-      <div data-newonly><label>Reps from</label><input data-f="lo" type="number" inputmode="numeric" min="1" value="8"></div>
-      <div data-newonly><label>Reps to</label><input data-f="hi" type="number" inputmode="numeric" min="1" value="10"></div>
-      <div data-newonly><label>Increment, kg</label><input data-f="inc" type="number" inputmode="decimal" step="0.5" min="0" value="2.5"></div>
-      <div data-newonly><label>Rest between sets</label>${restSel(90)}</div>
-      <div class="wide" data-newonly><label>Starting weight, kg</label><input data-f="w" type="number" inputmode="decimal" step="0.5" min="0" value="20"></div>
+      ${setsStep(edit.n)}${exFields(fresh, 20, " data-newonly", true)}
     </div>
     <p class="hint">Picking an existing exercise shares its weight with the other session it is in. Only do that when the rep range is the same in both.</p>
     <div class="acts"><button data-cancel>Cancel</button><button class="primary" data-save>Add</button></div>
@@ -1090,6 +1351,23 @@ function wirePlan(){
   };
   const cancel = form.querySelector("[data-cancel]");
   if (cancel) cancel.onclick = () => { edit = null; render(); };
+  form.querySelectorAll("[data-bump]").forEach(b => b.onclick = () => {
+    const [f, d] = b.dataset.bump.split(":"), inp = get(f);
+    inp.value = Math.max(1, Math.min(50, (+inp.value || 0) + +d));
+  });
+  const bb = get("barbell");
+  bb.onchange = () => {
+    form.querySelector('[data-when="bar"]').hidden = !bb.checked;
+    form.querySelector('[data-when="nobar"]').hidden = bb.checked;
+  };
+  /* A new exercise picks its group from its name until one is chosen by hand. */
+  let groupTouched = !!form.querySelector('[name="group"]:checked');
+  form.querySelectorAll('[name="group"]').forEach(r => r.onchange = () => { groupTouched = true; });
+  get("name").oninput = () => {
+    if (groupTouched) return;
+    const g = guessGroup(get("name").value);
+    form.querySelectorAll('[name="group"]').forEach(r => { r.checked = r.value === g; });
+  };
   const src = get("src");
   if (src) src.onchange = () =>
     form.querySelectorAll("[data-newonly]").forEach(el => el.classList.toggle("hide", !!src.value));
@@ -1098,8 +1376,11 @@ function wirePlan(){
       s.plan.push([src.value, edit.n]);
       edit = null; save(); toast("Added."); render(); return;
     }
+    const pick = n => (form.querySelector(`[name="${n}"]:checked`) || {}).value;
     const name = get("name").value.trim(), lo = +get("lo").value, hi = +get("hi").value,
-          inc = +get("inc").value, w = +get("w").value, kind = get("kind").value, rest = +get("rest").value;
+          inc = +get("inc").value, w = +get("w").value, rest = +get("rest").value,
+          kind = bb.checked ? "bar" : (pick("kind") || "machine"),
+          barKg = +(pick("barKg") || BARBELL), group = pick("group") || guessGroup(name);
     if (!name){ toast("Give it a name."); return; }
     if (!(lo >= 1 && hi >= lo)){ toast("Rep range needs a low end and a high end."); return; }
     if (!(inc > 0)){ toast("Increment must be above zero."); return; }
@@ -1107,7 +1388,7 @@ function wirePlan(){
     if (!(w >= 0)){ toast("Weight can't be negative."); return; }
     if (edit.i >= 0){
       const k = s.plan[edit.i][0], e = S.prog.ex[k];
-      Object.assign(e, {name, lo, hi, inc, kind, rest});
+      Object.assign(e, {name, lo, hi, inc, kind, rest, group, barKg});
       if (S.weights[k] !== w){
         S.weights[k] = w;
         if (!hasHistory(k)) e.start = w;
@@ -1116,7 +1397,7 @@ function wirePlan(){
       }
     } else {
       const k = newId(name);
-      S.prog.ex[k] = {name, lo, hi, inc, start:w, kind, rest};
+      S.prog.ex[k] = {name, lo, hi, inc, start:w, kind, rest, group, barKg};
       S.weights[k] = w;
       s.plan.push([k, edit.n]);
     }
@@ -1125,44 +1406,128 @@ function wirePlan(){
 }
 
 /* ── progress ──────────────────────────────────────────────────────────── */
+/* Charts are inline SVG sized to the column, so text is never stretched. Each chart
+   registers its points here; wireCharts turns them into a crosshair and tooltip. */
+let charts = [];
+const chartW = () => Math.max(240, Math.min(616, document.getElementById("view").clientWidth - 24 - 28));
+const compact = n => n >= 1e4 ? (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, "") + "k" : Math.round(n).toLocaleString();
+const shortDate = s => new Date(s + "T12:00:00").toLocaleDateString("en-GB", {day:"numeric", month:"short"});
+function niceStep(range, n){
+  const raw = range / n, mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+  return [1, 2, 2.5, 5, 10].map(m => m * mag).find(m => m >= raw) || 10 * mag;
+}
+/* Column path: square at the baseline, 4px rounded data end. */
+function colPath(x, w, y, base){
+  const r = Math.min(4, (base - y) / 2, w / 2);
+  return `M${x} ${base}V${y + r}Q${x} ${y} ${x + r} ${y}H${x + w - r}Q${x + w} ${y} ${x + w} ${y + r}V${base}Z`;
+}
+function volumeChart(){
+  const rs = S.history.slice(0, 12).reverse();
+  const W = chartW(), H = 150, L = 36, R = 6, T = 16, B = 20, base = H - B;
+  const vals = rs.map(tonnage), top = Math.max(...vals, 1);
+  const step = niceStep(top, 2), yMax = Math.ceil(top / step) * step;
+  const y = v => base - (v / yMax) * (base - T);
+  const band = (W - L - R) / rs.length, cw = Math.min(24, band * 0.62);
+  let g = "";
+  for (let v = 0; v <= yMax + 1e-9; v += step)
+    g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
+      <text class="ax" x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${compact(v)}</text>`;
+  const xs = [], ys = [], tips = [];
+  let cols = "", hits = "";
+  rs.forEach((r, i) => {
+    const cx = L + band * i + band / 2, v = vals[i];
+    xs.push(cx); ys.push(y(v));
+    tips.push([`${Math.round(v).toLocaleString()} kg`, `${sessName(r)} · ${fmtDate(r.date)}`]);
+    cols += `<path class="col${i < rs.length - 1 ? " dim" : ""}" d="${colPath(cx - cw / 2, cw, y(v), base)}"/>`;
+    hits += `<rect class="hit" x="${L + band * i}" y="${T}" width="${band}" height="${base - T}"/>`;
+  });
+  const last = rs.length - 1;
+  const lab = `<text class="lbl" x="${xs[last]}" y="${ys[last] - 6}" text-anchor="${last === 0 ? "start" : "middle"}">${compact(vals[last])}</text>`;
+  const xl = `<text class="ax" x="${xs[0]}" y="${H - 5}" text-anchor="${rs.length > 1 ? "start" : "middle"}">${shortDate(rs[0].date)}</text>`
+    + (rs.length > 1 ? `<text class="ax" x="${xs[last]}" y="${H - 5}" text-anchor="end">${shortDate(rs[last].date)}</text>` : "");
+  charts.push({xs, ys, tips, W, H, kind:"col"});
+  return `<div class="chart" data-chart="${charts.length - 1}"><h2>Volume per session</h2>
+    <div class="sub">Kilograms moved, last ${rs.length} session${rs.length === 1 ? "" : "s"}. Tap a column.</div>
+    <svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="Volume per session, latest ${Math.round(vals[last])} kg">
+      ${g}${cols}${lab}${xl}${hits}</svg><div class="tip"></div></div>`;
+}
+function weightChart(k){
+  const rows = S.history.filter(r => r.entries.some(x => x.k === k)).slice(0, 16).reverse()
+    .map(r => ({date:r.date, x:r.entries.find(x => x.k === k)}));
+  if (rows.length < 2) return `<p class="hint">Log it twice to see a trend here.</p>`;
+  const W = chartW(), H = 140, L = 36, R = 44, T = 12, B = 20, base = H - B;
+  const ws = rows.map(r => r.x.weight);
+  let lo = Math.min(...ws), hi = Math.max(...ws);
+  if (hi - lo < 5){ lo -= 2.5; hi += 2.5; }
+  const step = niceStep(hi - lo, 3);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = i => L + (W - L - R) * (rows.length === 1 ? .5 : i / (rows.length - 1));
+  const y = v => base - (v - lo) / (hi - lo) * (base - T);
+  let g = "";
+  for (let v = lo; v <= hi + 1e-9; v += step)
+    g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>
+      <text class="ax" x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${kg(v)}</text>`;
+  const xs = rows.map((_, i) => x(i)), ys = ws.map(y);
+  const line = xs.map((px, i) => `${i ? "L" : "M"}${px.toFixed(1)} ${ys[i].toFixed(1)}`).join("");
+  const area = `${line}L${xs[xs.length - 1]} ${base}L${xs[0]} ${base}Z`;
+  const n = rows.length - 1;
+  const tips = rows.map(r => [`${kg(r.x.weight)} kg`, `${fmtDate(r.date)} · ${r.x.reps.map(v => v ?? "–").join(" / ")}`]);
+  charts.push({xs, ys, tips, W, H, kind:"line", T, base});
+  return `<div class="chart" data-chart="${charts.length - 1}">
+    <svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="Working weight over ${rows.length} sessions, latest ${kg(ws[n])} kg">
+      ${g}<path class="area" d="${area}"/><path class="ln" d="${line}"/>
+      ${xs.map((px, i) => `<circle class="dot" cx="${px}" cy="${ys[i]}" r="${i === n ? 5 : 4}"/>`).join("")}
+      <text class="lbl" x="${xs[n] + 9}" y="${ys[n] + 4}">${kg(ws[n])}</text>
+      <text class="ax" x="${xs[0]}" y="${H - 5}" text-anchor="start">${shortDate(rows[0].date)}</text>
+      <text class="ax" x="${xs[n]}" y="${H - 5}" text-anchor="end">${shortDate(rows[n].date)}</text>
+      <line class="xh" x1="0" x2="0" y1="${T}" y2="${base}"/>
+      <rect class="hit" x="${L - 10}" y="0" width="${W - L - R + 20}" height="${H}"/>
+    </svg><div class="tip"></div></div>`;
+}
+function spark(k){
+  const ws = S.history.slice(0, 8).reverse().map(r => (r.entries.find(x => x.k === k) || {}).weight)
+    .filter(w => typeof w === "number");
+  if (ws.length < 2) return "";
+  const lo = Math.min(...ws), hi = Math.max(...ws), n = ws.length - 1;
+  const pt = (w, i) => [2 + 54 * i / n, hi === lo ? 12 : 21 - 18 * (w - lo) / (hi - lo)];
+  const d = ws.map((w, i) => (i ? "L" : "M") + pt(w, i).map(v => v.toFixed(1)).join(" ")).join("");
+  const [ex, ey] = pt(ws[n], n);
+  return `<svg class="spark" viewBox="0 0 58 24" aria-hidden="true"><path d="${d}"/><circle cx="${ex}" cy="${ey}" r="2.6"/></svg>`;
+}
+function statsRow(){
+  const wk = weekDates()[0], thisWeek = S.history.filter(r => r.date >= wk);
+  const vol = thisWeek.reduce((a, r) => a + tonnage(r), 0);
+  const up = Object.keys(S.prog.ex).filter(k => usedIn(k).length && S.weights[k] > S.prog.ex[k].start).length;
+  return `<div class="stats">
+    <div class="stat"><span>Sessions</span><b>${S.history.length}</b></div>
+    <div class="stat"><span>This week</span><b>${compact(vol)}<small>kg</small></b></div>
+    <div class="stat"><span>Weights up</span><b>${up}</b></div></div>`;
+}
 function progressView(){
-  let h = S.history.length ? "" :
-    `<div class="card"><p>These are your starting weights. They will move as you log sessions.
-     Tap a row to see its history.</p></div>`;
-  const seen = new Set();
-  S.prog.order.forEach((id, gi) => {
-    const s = S.prog.sessions[id];
-    const keys = s.plan.map(p => p[0]).filter(k => !seen.has(k) && seen.add(k));
-    if (!keys.length) return;
-    h += `<div class="grp"><i style="background:${GCOL[gi % GCOL.length]}"></i>${esc(s.name)}</div>`;
-    for (const k of keys){
-      const e = S.prog.ex[k], now = S.weights[k], st = e.start;
-      const d = Math.round((now - st) * 100) / 100;
-      const hist = S.history.slice().reverse()
-        .map(r => (r.entries.find(x => x.k === k) || {}).weight)
-        .filter(w => typeof w === "number");
-      const mx = Math.max(...hist, now || 0, 1);
-      const mn = Math.min(...hist, st || now || 0);
-      let sp = "";
-      if (hist.length > 1){
-        sp = `<span class="spark">` + hist.slice(-8).map((w, i, a) => {
-          const pc = mx === mn ? 50 : 12 + 88 * (w - mn) / (mx - mn);
-          return `<i class="${i > 0 && w > a[i - 1] ? "up" : ""}" style="height:${pc}%"></i>`;
-        }).join("") + `</span>`;
-      }
+  charts = [];
+  let h = S.history.length ? statsRow() + volumeChart() :
+    `<div class="card"><p>These are your starting weights. They will move as you log sessions,
+     and charts appear here once there is something to draw. Tap a row to see its history.</p></div>`;
+  const keys = [...new Set(S.prog.order.flatMap(id => S.prog.sessions[id].plan.map(p => p[0])))];
+  for (const g of [...GROUP_ORDER, "other"]){
+    const ks = keys.filter(k => (GROUPS[S.prog.ex[k].group] ? S.prog.ex[k].group : "other") === g);
+    if (!ks.length) continue;
+    h += `<div class="grp"><i style="background:${gcol(g)}"></i>${GROUPS[g] || "Other"}</div>`;
+    for (const k of ks){
+      const e = S.prog.ex[k], now = S.weights[k], d = Math.round((now - e.start) * 100) / 100;
       const u = usedIn(k);
       const dup = Object.keys(S.prog.ex).some(x => x !== k && S.prog.ex[x].name === e.name);
-      const tag = u.length > 1 ? `<em>shared with ${esc(u.filter(x => x !== id).map(x => S.prog.sessions[x].name).join(", "))}</em>`
+      const tag = u.length > 1 ? `<em>in ${esc(u.map(x => S.prog.sessions[x].name).join(" and "))}</em>`
                 : dup ? `<em>${e.lo}–${e.hi} reps</em>` : "";
-      h += `<button class="prow" data-px="${k}">
+      h += `<button class="prow" data-px="${k}">${icon(e, "sm")}
         <div class="nm">${esc(e.name)}${tag}</div>
-        ${sp}
+        ${spark(k)}
         <div class="now">${kg(now)}</div>
         <div class="dlt${d ? "" : " flat"}">${d > 0 ? "+" + kg(d) : d < 0 ? kg(d) : "—"}</div>
       </button>`;
       if (openKey === k) h += exDetail(k);
     }
-  });
+  }
   h += `<div class="grp">All sessions</div>`;
   if (!S.history.length) h += `<p class="hint" style="margin:0 2px">Nothing logged yet.</p>`;
   S.history.forEach((r, i) => {
@@ -1183,7 +1548,7 @@ function exDetail(k){
   const rows = S.history.filter(r => r.entries.some(x => x.k === k)).slice(0, 6)
     .map(r => ({date:r.date, x:r.entries.find(x => x.k === k)}));
   if (!rows.length) return `<div class="detail"><p class="hint">Not logged yet.</p></div>`;
-  let h = `<div class="detail">`;
+  let h = `<div class="detail">${weightChart(k)}`;
   for (const {date, x} of rows)
     h += `<div class="drow"><span>${fmtDate(date)}</span><b>${kg(x.weight)} kg</b>
       <span>${x.reps.map(n => n ?? "–").join(" / ")}</span></div>`;
@@ -1203,8 +1568,58 @@ function stalled(k){
       && sum(rows[0]) <= sum(rows[2]);
 }
 
+/* One tooltip per chart: the crosshair finds the nearest point by x; columns lift. */
+function wireCharts(){
+  document.querySelectorAll("[data-chart]").forEach(box => {
+    const c = charts[+box.dataset.chart], svg = box.querySelector("svg"), tip = box.querySelector(".tip");
+    const xh = svg.querySelector(".xh"), cols = svg.querySelectorAll(".col");
+    let cur = -1;
+    const show = i => {
+      cur = i;
+      const r = svg.getBoundingClientRect(), br = box.getBoundingClientRect(), sx = r.width / c.W, sy = r.height / c.H;
+      tip.textContent = "";
+      const b = document.createElement("b"); b.textContent = c.tips[i][0];
+      tip.append(b, document.createTextNode(c.tips[i][1]));
+      tip.classList.add("on");
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      const px = r.left - br.left + c.xs[i] * sx, py = r.top - br.top + c.ys[i] * sy;
+      tip.style.left = Math.max(4, Math.min(br.width - tw - 4, px - tw / 2)) + "px";
+      tip.style.top = Math.max(2, py - th - 10) + "px";
+      if (xh){ xh.setAttribute("x1", c.xs[i]); xh.setAttribute("x2", c.xs[i]); xh.classList.add("on"); }
+      cols.forEach((el, j) => el.classList.toggle("dim", j !== i));
+    };
+    const hide = () => {
+      cur = -1; tip.classList.remove("on");
+      if (xh) xh.classList.remove("on");
+      cols.forEach((el, j) => el.classList.toggle("dim", j !== cols.length - 1));
+    };
+    const near = ev => {
+      const r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * c.W / r.width;
+      let best = 0;
+      c.xs.forEach((px, i) => { if (Math.abs(px - x) < Math.abs(c.xs[best] - x)) best = i; });
+      return best;
+    };
+    svg.addEventListener("pointermove", ev => show(near(ev)));
+    svg.addEventListener("pointerdown", ev => show(near(ev)));
+    svg.addEventListener("pointerleave", hide);
+    svg.addEventListener("focus", () => show(c.xs.length - 1));
+    svg.addEventListener("blur", hide);
+    svg.addEventListener("keydown", ev => {
+      if (ev.key === "ArrowLeft" || ev.key === "ArrowRight"){
+        ev.preventDefault();
+        show(Math.max(0, Math.min(c.xs.length - 1, (cur < 0 ? c.xs.length - 1 : cur) + (ev.key === "ArrowLeft" ? -1 : 1))));
+      }
+    });
+  });
+}
+let resizeT;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { if (tab === "progress") render(); }, 150);
+});
 function wireProgress(){
   const v = document.getElementById("view");
+  wireCharts();
   v.querySelectorAll("[data-px]").forEach(b => b.onclick = () => {
     openKey = openKey === b.dataset.px ? null : b.dataset.px; render();
   });

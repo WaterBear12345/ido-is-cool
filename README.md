@@ -36,11 +36,16 @@ once on wifi and it works without signal after that.
 **Train.** Opens on this week, and warns you at the top if storage is blocked or a backup
 is overdue. Each day shows the session scheduled for it, a green dot
 when something was logged that day, blue for today and red for a missed day. Start the
-session, tap an exercise, tap a set, tap a rep count. The pad moves to the next set by
-itself. Barbell lifts show which plates to load per side in competition colours.
+session, tap an exercise, tap a set, and drag the slider to the reps you did, then Log set.
+The slider runs from zero to well past the top of the range, so a set short of the
+target is one drag away; it starts where your last set ended and marks the target
+range on its track. Every exercise has an icon for its equipment, tinted by muscle
+group. Barbell lifts draw the loaded bar in competition plate colours and list the
+plates per side; tap "25 kg bar" to switch the bar between 20 and 25 kg on the spot.
+"Edit" beside the target changes that exercise's rep range mid-workout.
 Logging a set starts a rest timer in the tab bar for that exercise's rest time, with
-−15 and +15 to adjust the one running and Skip to clear it. It beeps and vibrates when
-it ends. While a rest is running the app asks the phone not to auto-lock from sitting
+−15 and +15 to adjust the one running and Skip to clear it. When it ends the whole screen turns green with the next set on it, and it
+beeps and vibrates. Tap anywhere to carry on, or +15 s for more rest. While a rest is running the app asks the phone not to auto-lock from sitting
 idle, because both the beep and the vibration are silenced the moment the screen goes
 off; the count itself carries on regardless and is correct when you look again.
 Pressing the side button still locks the phone, and there is no way for a web page to
@@ -52,14 +57,20 @@ earned it.
 
 **Plan.** The programme is editable in the app. Rename sessions, move them between days,
 add or remove sessions, and for each exercise change the sets, rep range, increment,
-rest between sets, current weight and equipment type. Reorder with the arrows. "Add exercise" can either
+rest between sets, current weight, muscle group and equipment. "Barbell with plates"
+is a switch: on, it draws the bar and asks whether the bar is 20 or 25 kg; off, it
+offers dumbbells, machine or cable. A new exercise guesses its muscle group from its
+name until you pick one. Reorder with the arrows. "Add exercise" can either
 create a new exercise or pick an existing one, which shares its weight with the other
 session it is in. That is how linking works: low rows and cable crunches are shared by
 default and climb twice a week. Squats, leg curls, calf raises and tricep pushdowns are
 repeated on separate weights because their rep ranges differ.
 
-**Progress.** Current weight and gain since the start for every exercise, with a
-sparkline of recent sessions. Tap a row for its last six sessions. Three sessions at one
+**Progress.** Sessions logged, volume this week and how many weights have gone up, then
+a chart of the volume moved in each of the last twelve sessions. Below that, every
+exercise grouped by muscle, with its current weight, gain since the start and a
+sparkline. Tap a row for a chart of its working weight over time and its last six
+sessions; tap or drag across any chart for the values. Three sessions at one
 weight with no rep improvement shows a stall note with a suggested reset weight. Below
 that, every logged session with its sets, and the option to delete one. Tapping a
 session in the Recent list on Train lands there too. Deleting a session also undoes any
@@ -118,8 +129,11 @@ everything including the programme.
 
 The defaults are in `index.html` in the `DEFAULT_EX` and `DEFAULT_SESSIONS` blocks near
 the top of the script. `lo` and `hi` are the rep range, `inc` is the weight jump,
-`start` is the starting weight, `kind` is `bar`, `db` or `machine`, and `rest` is the
-seconds between sets, set in `DEFAULT_REST` with 75 for anything not listed. Days run 0 for
+`start` is the starting weight, `kind` is `bar`, `db`, `machine` or `cable`, `barKg` is
+20 or 25 for a barbell, `group` is the muscle group, and `rest` is the seconds between
+sets. The defaults for those last three live in `DEFAULT_BAR`, `DEFAULT_GROUP` and
+`DEFAULT_REST`. Squats default to a 25 kg bar. An existing log picks up groups, cable
+and the squat bar once, on first load; anything you change by hand afterwards stays. Days run 0 for
 Monday to 6 for Sunday, so Upper B is day 5. Two sessions referencing the same key share a weight.
 Changes there only apply to fresh installs or after "Reset programme" in Plan.
 
@@ -128,8 +142,10 @@ Changes there only apply to fresh installs or after "Reset programme" in Plan.
 `test/e2e.cjs` drives the real page in headless Chromium: plate maths, the progression
 rule including incomplete and bottom-of-range sessions, shared versus separate weights,
 the planner, migration from the old storage format, export and restore, the backup
-prompt, the blocked-storage warning, the rest timer, mid-workout set changes, and
-deleting a session with its weight rolled back.
+prompt, the blocked-storage warning, the rest timer and its green screen, mid-workout
+set changes, the rep slider, rep ranges edited mid-workout, the barbell drawing and
+bar switch, muscle groups and their migration, the charts, and deleting a session with
+its weight rolled back.
 
 ```
 npm install playwright

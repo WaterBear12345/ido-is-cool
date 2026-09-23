@@ -54,21 +54,22 @@ function serve(){
   const S = page => page.evaluate(() => JSON.parse(localStorage.getItem("barload.v2")));
   const shot = (page, name) => shots ? page.screenshot({path: path.join(shots, name + ".png"), fullPage:false}) : null;
   const tapTab = (page, t) => page.click(`nav button[data-tab="${t}"]`);
+  /* the rep sheet: drag the slider to n, then Log set */
+  const pickReps = async (page, n) => {
+    await page.locator("#padRange").fill(String(n));
+    await page.click("#padLog");
+  };
+  /* a rest ending puts the green screen over everything; tap it away */
+  const dismissGo = async page => { if (await page.locator("#go:not(.hide)").count()) await page.click("#goDone"); };
   const logSets = async (page, exIndex, reps) => {
-    /* open the exercise, then tap each set and pick the rep count from the pad */
     if (!(await page.locator(".ex").nth(exIndex).locator(".body").count()))
       await page.click(`[data-open="${exIndex}"]`);
     for (let si = 0; si < reps.length; si++){
-      const padOpen = await page.locator(".pad.on").count();
-      const onThisSet = padOpen && (await page.textContent("#padTitle")).endsWith(`set ${si + 1}`);
-      if (reps[si] === null){ if (padOpen) await page.click("#padClose"); continue; }
-      if (!onThisSet){
-        if (padOpen) await page.click("#padClose");
-        await page.click(`[data-set="${exIndex}:${si}"]`);
-      }
-      await page.click(`#padKeys button:text-is("${reps[si]}")`);
+      if (reps[si] === null) continue;
+      await dismissGo(page);
+      await page.click(`[data-set="${exIndex}:${si}"]`);
+      await pickReps(page, reps[si]);
     }
-    if (await page.locator(".pad.on").count()) await page.click("#padClose");
   };
 
   console.log("\nPage load and pure functions");
@@ -107,7 +108,9 @@ function serve(){
   console.log("\nProgression rule");
   await page.click('[data-start="upperA"]');
   eq("live session header", await page.textContent("#hTitle"), "Upper A");
-  eq("bench shows plates", await page.textContent(".plates .cap"), "per side1×20");
+  eq("bench draws one 20 per side", await page.getAttribute(".plates", "data-perside"), "20");
+  eq("on a 20 kg bar", await page.getAttribute(".plates", "data-bar"), "20");
+  check("the drawing is mirrored, one plate each side", (await page.locator(".plates svg .pl8").count()) === 2);
   await logSets(page, 0, [8, 8, 8]);
   eq("note announces next weight", await page.textContent(".note"), "Next time: 62.5 kg");
   await shot(page, "02-live");
@@ -149,7 +152,8 @@ function serve(){
 
   console.log("\nProgress tab");
   await tapTab(page, "progress");
-  eq("progress groups by session", await page.locator(".grp").allTextContents(), ["Lower A", "Upper A", "Lower B", "Upper B", "All sessions"]);
+  eq("progress groups by muscle", await page.locator(".grp").allTextContents(),
+     ["Chest", "Back", "Legs", "Arms", "Shoulders", "Core", "All sessions"]);
   const benchRow = page.locator('[data-px="bench"]');
   eq("bench delta", await benchRow.locator(".dlt").textContent(), "+5");
   await benchRow.click();
@@ -189,7 +193,8 @@ function serve(){
   const added = st.prog.sessions.upperB.plan[st.prog.sessions.upperB.plan.length - 1];
   const nid = added[0];
   eq("new exercise appended with 3 sets", [nid.startsWith("overhead"), added[1]], [true, 3]);
-  eq("new exercise definition", st.prog.ex[nid], {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90});
+  eq("new exercise definition", st.prog.ex[nid],
+     {name:"Overhead extensions", lo:10, hi:12, inc:2.5, start:20, kind:"machine", rest:90, group:"arms", barKg:20});
   eq("new exercise weight", st.weights[nid], 20);
   check("plan sub counts the new sets", /58 working sets/.test(await page.textContent("#hSub")));
 
@@ -367,7 +372,7 @@ function serve(){
   await page.click('[data-start="upperA"]');
   check("live sub-line shows the rest", (await page.locator(".ex-name span").first().textContent()).includes("rest 2:30"));
   await page.click('[data-set="0:0"]');
-  await page.click('#padKeys button:text-is("8")');
+  await pickReps(page, 8);
   eq("pad closes after a set", await page.locator(".pad.on").count(), 0);
   eq("timer starts with that exercise's rest", await page.textContent("#restTime"), "2:30");
   eq("timer names the exercise", await page.textContent("#restName"), "Bench press");
@@ -381,8 +386,19 @@ function serve(){
   await page.evaluate(() => { S.live.rest.end = Date.now() - 500; save(); tick(); });
   eq("shows Go when it ends", await page.textContent("#restTime"), "Go");
   eq("beep recorded as done", await page.evaluate(() => S.live.rest.done), true);
+  eq("the whole screen turns green", await page.locator("#go").isVisible(), true);
+  check("it says what is next", (await page.textContent("#goNext")).startsWith("Next: Bench press, set 2"),
+        await page.textContent("#goNext"));
+  await page.click("#goMore");
+  eq("+15 on the green screen resumes the rest", await page.locator("#go").isHidden(), true);
+  check("and the bar counts again", /^0:1\d$/.test(await page.textContent("#restTime")), await page.textContent("#restTime"));
+  await page.evaluate(() => { S.live.rest.end = Date.now() - 500; save(); tick(); });
+  await page.click("#go", {position:{x:30, y:30}});
+  eq("tapping anywhere clears it", await page.locator("#go").isHidden(), true);
+  eq("and clears the rest", await page.locator("#rest").isHidden(), true);
+  await page.click('[data-set="0:0"]'); await pickReps(page, 8);
   await page.click("#restSkip");
-  eq("skip clears it", await page.locator("#rest").isHidden(), true);
+  eq("skip clears a running rest", await page.locator("#rest").isHidden(), true);
 
   await page.click('[data-nset="0:1"]');
   eq("plus adds a fourth set", await page.locator('[data-set^="0:"]').count(), 4);
@@ -437,7 +453,7 @@ function serve(){
   eq("beep toggle persists", await page.evaluate(() => S.settings.sound), false);
   await tapTab(page, "train");
   await page.click('[data-start="upperA"]');
-  await page.click('[data-set="0:0"]'); await page.click('#padKeys button:text-is("8")');
+  await page.click('[data-set="0:0"]'); await pickReps(page, 8);
   eq("a new session uses the edited rest", await page.textContent("#restTime"), "2:00");
   await page.click("#abandon");
   await page.click('[data-start="lowerA"]');
@@ -449,9 +465,152 @@ function serve(){
   const li = await page.evaluate(() => S.live.log.length - 1);
   const si = await page.evaluate(() => S.live.log[S.live.log.length - 1].reps.length - 1);
   await page.click(`[data-open="${li}"]`);
-  await page.click(`[data-set="${li}:${si}"]`); await page.click('#padKeys button:text-is("15")');
+  await page.click(`[data-set="${li}:${si}"]`); await pickReps(page, 15);
   eq("no rest after the last set of the session", await page.locator("#rest").isHidden(), true);
   await page.click("#abandon");
+  await page.close();
+
+  console.log("\nBarbell, rep slider, rep ranges, muscle groups, charts");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => { S.settings.autosave = false; save(); });
+  eq("squats sit on a 25 kg bar, bench on a 20", await page.evaluate(() => [S.prog.ex.squat.barKg, S.prog.ex.bench.barKg]), [25, 20]);
+  eq("plate maths honours the bar", await page.evaluate(() => [plateBreak(105, 25).plates.map(p => p[0]), plateBreak(105).plates.map(p => p[0])]),
+     [[25, 15], [25, 15, 2.5]]);
+  eq("cable exercises are their own kind", await page.evaluate(() => [S.prog.ex.pulldown.kind, S.prog.ex.flies.kind]), ["cable", "machine"]);
+  eq("guessing a group from a name", await page.evaluate(() =>
+    ["Leg raise", "Leg curl", "Overhead extensions", "Shoulder press", "Lat pulldown", "Incline press", "Zottman"].map(guessGroup)),
+    ["core", "legs", "arms", "shoulders", "back", "chest", "other"]);
+
+  await page.click('[data-start="lowerA"]');
+  eq("squat card carries a legs-tinted barbell icon", await page.locator(".ex").first().locator(".ico").getAttribute("style"), "color:var(--g-legs)");
+  eq("105 on the squat bar is 25 and 15 a side", await page.getAttribute(".plates", "data-perside"), "25,15");
+  eq("drawn on a 25 kg bar", await page.getAttribute(".plates", "data-bar"), "25");
+  await page.click('[data-barkg="0"]');
+  eq("tapping the bar switches it to 20", await page.getAttribute(".plates", "data-bar"), "20");
+  eq("and the plates follow", await page.getAttribute(".plates", "data-perside"), "25,15,2.5");
+  eq("the switch is saved on the exercise", await page.evaluate(() => S.prog.ex.squat.barKg), 20);
+  await page.click('[data-barkg="0"]');
+
+  await page.click('[data-set="0:0"]');
+  eq("slider goes well below the range", await page.getAttribute("#padRange", "min"), "0");
+  check("and well above it", +(await page.getAttribute("#padRange", "max")) >= 30);
+  eq("first set starts at the bottom of the range", await page.textContent("#padNum"), "5");
+  eq("ticks mark the target", await page.locator("#padTicks .tk").allTextContents(), ["5", "8"]);
+  await page.locator("#padRange").fill("3");
+  eq("fewer than the range is allowed", await page.textContent("#padNum"), "3");
+  eq("and says how far short", await page.textContent("#padZone"), "2 short of the range");
+  await page.click("#padPlus"); await page.click("#padPlus"); await page.click("#padPlus");
+  eq("+ nudges one rep at a time", await page.textContent("#padNum"), "6");
+  eq("in range", await page.textContent("#padZone"), "In range");
+  await page.click("#padLog");
+  await dismissGo(page);
+  await page.click('[data-set="0:1"]');
+  eq("the next set starts where the last one ended", await page.textContent("#padNum"), "6");
+  await page.locator("#padRange").fill("8");
+  eq("top of the range", await page.textContent("#padZone"), "Top of the range");
+  await page.click("#padClose");
+  eq("closing without logging leaves the set empty", await page.evaluate(() => S.live.log[0].reps[1]), null);
+
+  await page.click('[data-rr="0"]');
+  await page.click('[data-rrb="0:lo:-1"]'); await page.click('[data-rrb="0:lo:-1"]');
+  await page.click('[data-rrb="0:hi:1"]');
+  eq("rep range edited mid-workout", await page.evaluate(() => [S.prog.ex.squat.lo, S.prog.ex.squat.hi]), [3, 9]);
+  check("target line follows", (await page.textContent(".reprange")).includes("3–9"));
+  await page.click('[data-rrb="0:lo:1"]'); await page.click('[data-rrb="0:lo:1"]'); await page.click('[data-rrb="0:hi:-1"]');
+  await page.click('[data-rr="0"]');
+  eq("and back", await page.evaluate(() => [S.prog.ex.squat.lo, S.prog.ex.squat.hi]), [5, 8]);
+  await page.click('[data-open="4"]');
+  await page.click('[data-rr="4"]');
+  check("a shared exercise warns it changes the other session", (await page.textContent(".rredit")).includes("Shared"));
+  await page.click("#abandon");
+  check("session cards show their muscle groups", (await page.locator('.pick [data-start="upperA"] .gdots i').count()) >= 3);
+
+  /* Plan: barbell switch and bar weight on a new exercise */
+  await tapTab(page, "plan");
+  await page.locator(".sess").nth(0).locator("[data-add]").click();
+  await page.fill('[data-f="name"]', "Front squat");
+  check("group is guessed while typing", await page.locator('.edit input[name="group"][value="legs"]').isChecked());
+  check("bar weight hidden until barbell is on", await page.locator('.edit [data-when="bar"]').isHidden());
+  await page.check('.edit [data-f="barbell"]');
+  check("switching barbell on shows the bar weight", await page.locator('.edit [data-when="bar"]').isVisible());
+  check("and hides the other equipment", await page.locator('.edit [data-when="nobar"]').isHidden());
+  await page.check('.edit input[name="barKg"][value="25"]');
+  await page.fill('[data-f="w"]', "70");
+  await page.click('.edit [data-bump="lo:-1"]');
+  await page.click(".edit [data-save]");
+  let st2 = await S(page);
+  const fs2 = Object.values(st2.prog.ex).find(e => e.name === "Front squat");
+  eq("new barbell exercise", [fs2.kind, fs2.barKg, fs2.group, fs2.lo, fs2.hi], ["bar", 25, "legs", 7, 10]);
+  await page.locator(".sess").nth(1).locator("[data-add]").click();
+  await page.fill('[data-f="name"]', "Zottman curl");
+  await page.check('.edit input[name="kind"][value="db"]');
+  await page.check('.edit input[name="group"][value="shoulders"]');
+  await page.fill('[data-f="name"]', "Zottman curls");
+  check("a group picked by hand is not overridden by typing", await page.locator('.edit input[name="group"][value="shoulders"]').isChecked());
+  await page.click(".edit [data-save]");
+  st2 = await S(page);
+  const z = Object.values(st2.prog.ex).find(e => e.name === "Zottman curls");
+  eq("new dumbbell exercise", [z.kind, z.group], ["db", "shoulders"]);
+  await page.click('[data-edit="upperA:0"]');
+  check("editing shows the barbell switch on for bench", await page.locator('.edit [data-f="barbell"]').isChecked());
+  eq("with its 20 kg bar selected", await page.locator('.edit input[name="barKg"]:checked').getAttribute("value"), "20");
+  await page.uncheck('.edit [data-f="barbell"]');
+  await page.check('.edit input[name="kind"][value="machine"]');
+  await page.click(".edit [data-save]");
+  eq("barbell can be switched off", await page.evaluate(() => S.prog.ex.bench.kind), "machine");
+  await page.click('[data-edit="upperA:0"]');
+  await page.check('.edit [data-f="barbell"]');
+  await page.click(".edit [data-save]");
+  eq("and back on", await page.evaluate(() => S.prog.ex.bench.kind), "bar");
+  check("plan rows carry icons", (await page.locator(".pl .ico").count()) >= 20);
+
+  /* Charts */
+  await page.evaluate(() => {
+    const mk = (date, w, reps) => ({date, id:"upperA", name:"Upper A",
+      entries:[{k:"bench", name:"Bench press", weight:w, reps}, {k:"pulldown", name:"Lat pulldowns", weight:60, reps:[10, 10, 10]}]});
+    S.history = [mk("2026-09-22", 65, [8, 8, 7]), mk("2026-09-15", 62.5, [8, 8, 8]), mk("2026-09-08", 60, [8, 8, 8])];
+    save();
+  });
+  await tapTab(page, "progress");
+  eq("three stat tiles", await page.locator(".stat").count(), 3);
+  eq("one column per session", await page.locator('[data-chart="0"] .col').count(), 3);
+  const vbox = await page.locator('[data-chart="0"] svg').boundingBox();
+  await page.mouse.move(vbox.x + 50, vbox.y + vbox.height / 2);
+  check("hovering a column shows its value", (await page.textContent('[data-chart="0"] .tip')).includes("kg"),
+        await page.textContent('[data-chart="0"] .tip'));
+  check("rows have sparklines", (await page.locator('[data-px="bench"] .spark').count()) === 1);
+  await page.click('[data-px="bench"]');
+  eq("detail shows a weight chart", await page.locator(".detail .chart .ln").count(), 1);
+  eq("one dot per session", await page.locator(".detail .chart .dot").count(), 3);
+  eq("the latest weight is labelled at the end", await page.textContent(".detail .chart .lbl"), "65");
+  const lbox = await page.locator(".detail .chart svg").boundingBox();
+  await page.mouse.move(lbox.x + lbox.width - 50, lbox.y + lbox.height / 2);
+  check("tooltip carries the reps", (await page.textContent(".detail .tip")).includes("8 / 8 / 7"),
+        await page.textContent(".detail .tip"));
+  await page.click('[data-px="rdl"]');
+  eq("a lift logged fewer than twice gets a hint instead", await page.textContent(".detail .hint"), "Not logged yet.");
+  await shot(page, "30-progress-charts");
+  await page.close();
+
+  console.log("\nMigration adds groups and bars to an existing programme");
+  page = await newPage();
+  await page.goto(base, {waitUntil:"networkidle"});
+  await page.evaluate(() => {
+    const o = JSON.parse(JSON.stringify(S));
+    for (const k in o.prog.ex){ delete o.prog.ex[k].group; delete o.prog.ex[k].barKg;
+      if (o.prog.ex[k].kind === "cable") o.prog.ex[k].kind = "machine"; }
+    o.prog.ex.mine = {name:"Hanging leg raise", lo:8, hi:12, inc:0, start:0, kind:"machine", rest:60};
+    o.weights.mine = 0;
+    localStorage.setItem("barload.v2", JSON.stringify(o));
+  });
+  await page.reload({waitUntil:"networkidle"});
+  eq("old data gains groups, cable and the 25 kg squat bar", await page.evaluate(() =>
+    [S.prog.ex.bench.group, S.prog.ex.pulldown.kind, S.prog.ex.squat.barKg, S.prog.ex.bench.barKg, S.prog.ex.mine.group]),
+    ["chest", "cable", 25, 20, "core"]);
+  await page.evaluate(() => { S.prog.ex.pulldown.kind = "machine"; save(); });
+  await page.reload({waitUntil:"networkidle"});
+  eq("a kind changed by hand afterwards is left alone", await page.evaluate(() => S.prog.ex.pulldown.kind), "machine");
   await page.close();
 
   console.log("\nScreen wake lock keeps the timer audible");
@@ -470,17 +629,18 @@ function serve(){
   check("wake lock is supported in this environment", await page.evaluate(() => "wakeLock" in navigator));
   eq("no lock held before any rest", await page.evaluate(() => wakeLock), null);
   await page.click('[data-start="upperA"]');
-  await page.click('[data-set="0:0"]'); await page.click('#padKeys button:text-is("8")');
+  await page.click('[data-set="0:0"]'); await pickReps(page, 8);
   await page.waitForFunction(() => wakeLock !== null);
   eq("starting a rest acquires a screen lock", await page.evaluate(() => wakeLock.type), "screen");
   await page.click("#restSkip");
   eq("skip releases it", await page.evaluate(() => wakeLock), null);
-  await page.click('[data-set="0:1"]'); await page.click('#padKeys button:text-is("8")');
+  await page.click('[data-set="0:1"]'); await pickReps(page, 8);
   await page.waitForFunction(() => wakeLock !== null);
   await page.evaluate(() => { S.live.rest.end = Date.now() - 200; save(); tick(); });
   await page.waitForTimeout(300);
   eq("the lock is released once the rest ends on its own", await page.evaluate(() => wakeLock), null);
-  await page.click('[data-set="0:2"]'); await page.click('#padKeys button:text-is("8")');
+  await dismissGo(page);
+  await page.click('[data-set="0:2"]'); await pickReps(page, 8);
   await page.waitForFunction(() => wakeLock !== null);
   eq("beep vibrates the phone", await page.evaluate(() => {
     let called = null;
@@ -488,7 +648,7 @@ function serve(){
     S.live.rest.end = Date.now() - 200; save(); tick();
     return called;
   }), [200, 80, 200]);
-  await page.click("#restPlus");                       /* +15 after Go: running again */
+  await page.click("#goMore");                          /* +15 after Go: running again */
   await page.waitForFunction(() => wakeLock !== null);
   eq("extending a finished rest takes the lock again", await page.evaluate(() => wakeLock.type), "screen");
   /* When the page hides, the OS releases the sentinel itself. Do that release, prove the
