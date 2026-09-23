@@ -931,6 +931,39 @@ function serve(){
   await page.click("#abandon");
   await wlBrowser.close();
 
+  console.log("\nAppearance: system, light or dark");
+  const bodyBg = p => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const LIGHT = "rgb(230, 232, 235)", DARK = "rgb(18, 22, 26)";
+  page = await newPage({colorScheme:"light"});
+  await page.goto(base, {waitUntil:"networkidle"});
+  eq("System by default, following a light phone", [await page.evaluate(() => S.settings.theme), await bodyBg(page)], ["system", LIGHT]);
+  await tapTab(page, "more");
+  eq("three choices", await page.locator("#theme label").allTextContents(), ["System", "Light", "Dark"]);
+  await page.check('#theme input[value="dark"]');
+  eq("Dark turns a light phone's app dark", [await page.getAttribute("html", "data-theme"), await bodyBg(page)], ["dark", DARK]);
+  eq("cards follow", await page.evaluate(() => getComputedStyle(document.querySelector(".card")).backgroundColor), "rgb(28, 33, 39)");
+  eq("so do form controls", await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "dark");
+  await page.reload({waitUntil:"domcontentloaded"});
+  eq("the choice is applied before the app script runs, so nothing flashes", await page.evaluate(() =>
+    document.documentElement.getAttribute("data-theme")), "dark");
+  await page.waitForLoadState("networkidle");
+  eq("and survives a reload", await bodyBg(page), DARK);
+  await page.close();
+  page = await newPage({colorScheme:"dark"});
+  await page.goto(base, {waitUntil:"networkidle"});
+  eq("System follows a dark phone", await bodyBg(page), DARK);
+  await tapTab(page, "more");
+  await page.check('#theme input[value="light"]');
+  eq("Light turns a dark phone's app light", [await page.getAttribute("html", "data-theme"), await bodyBg(page)], ["light", LIGHT]);
+  await page.check('#theme input[value="system"]');
+  eq("System hands it back to the phone", [await page.getAttribute("html", "data-theme"), await bodyBg(page)], [null, DARK]);
+  eq("the theme picker covers nothing else on More", await page.evaluate(() => {
+    document.getElementById("json").scrollIntoView({block:"center"});
+    const r = document.getElementById("json").getBoundingClientRect();
+    return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2).id;
+  }), "json");
+  await page.close();
+
   console.log("\nTab bar sits on the bottom edge");
   page = await newPage();
   await page.goto(base, {waitUntil:"networkidle"});

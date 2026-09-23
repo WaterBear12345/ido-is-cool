@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <meta name="color-scheme" content="light dark">
+<script>
+try {
+  var t = JSON.parse(localStorage.getItem("barload.v2")).settings.theme;
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+} catch (e) {}
+</script>
 <title>Barload</title>
 <meta name="description" content="Workout planner and training log. Double progression, plate maths, editable programme. Static, offline, no accounts.">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,8 +33,10 @@
   --go:#0a7f3f; --go2:#12a352; --fig:#c3cad3;
   --pad-b:env(safe-area-inset-bottom,0px);
 }
+/* Appearance: System follows the phone; Light or Dark in More stamps data-theme on <html>,
+   which wins in both directions. The dark tokens are listed once per route in. */
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     --ground:#12161a; --panel:#1c2127; --ink:#eef1f4; --steel:#98a2ad; --hair:#2d343c;
     --head:#0b0e11; --head-sub:#8a949f; --field:#12161a;
     --done:#1b2a22; --hit:#1f3a2b; --inrange:#1e2f47; --spark:#3a434d; --navbg:rgba(28,33,39,.94);
@@ -37,6 +45,16 @@
     --g-core:#189db0; --g-other:#98a2ad; --fig:#4a5561;
   }
 }
+:root[data-theme="dark"]{
+    --ground:#12161a; --panel:#1c2127; --ink:#eef1f4; --steel:#98a2ad; --hair:#2d343c;
+    --head:#0b0e11; --head-sub:#8a949f; --field:#12161a;
+    --done:#1b2a22; --hit:#1f3a2b; --inrange:#1e2f47; --spark:#3a434d; --navbg:rgba(28,33,39,.94);
+    --ok:#4cc27e; --p5:#e6e8eb; --accent:#4d8fe0; --zone:#2c4f80; --wash:rgba(77,143,224,.14);
+    --g-chest:#e84a5c; --g-back:#4a8ade; --g-legs:#2aa358; --g-arms:#976fe3; --g-shoulders:#b8871f;
+    --g-core:#189db0; --g-other:#98a2ad; --fig:#4a5561;
+}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{
@@ -681,7 +699,7 @@ const defaultProg = () => JSON.parse(JSON.stringify({ex:DEFAULT_EX, sessions:DEF
    server: a static page can be served by GitHub Pages but never written to. A
    dated backup file after each session is what makes the log outlive the phone. */
 let S;
-const DEFAULTS = () => ({autosave:true, sound:true, haptics:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
+const DEFAULTS = () => ({autosave:true, sound:true, haptics:true, theme:"system", startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
 function blank(){
   const prog = defaultProg(), w = {};
   for (const k in prog.ex) w[k] = prog.ex[k].start;
@@ -787,7 +805,15 @@ function backupNow(){
   toast("Backup saved. Keep it in Files or Drive.");
   render();
 }
+/* System leaves the phone in charge; Light or Dark overrides it. */
+const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
+function applyTheme(){
+  const t = S.settings.theme;
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  else document.documentElement.removeAttribute("data-theme");
+}
 load();
+applyTheme();
 try { localStorage.setItem(KEY, JSON.stringify(S)); }   /* prove storage works before anything is logged */
 catch (e) { storageOK = false; }
 askPersist();
@@ -2073,6 +2099,11 @@ function moreView(){
     <button id="imp">Choose a backup file</button>
     <button id="paste">Paste backup text instead</button>
   </div>
+  <div class="card"><h2>Appearance</h2>
+    <p>System follows your phone's light or dark setting. Light and Dark keep the app that way.</p>
+    <div class="seg" id="theme">${THEMES.map(([v, l]) =>
+      `<label><input type="radio" name="theme" value="${v}"${S.settings.theme === v ? " checked" : ""}>${l}</label>`).join("")}</div>
+  </div>
   <div class="card"><h2>Rest timer</h2>
     <p>Starts on its own after every set you log, for as long as that exercise's rest time in Plan.
        −15 and +15 adjust the one that is running; Skip clears it.</p>
@@ -2131,6 +2162,9 @@ function wireMore(){
   document.getElementById("json").onclick = backupNow;
   document.getElementById("auto").onchange = ev => { S.settings.autosave = ev.target.checked; save(); };
   document.getElementById("snd").onchange = ev => { S.settings.sound = ev.target.checked; save(); };
+  document.querySelectorAll('[name="theme"]').forEach(r => r.onchange = () => {
+    S.settings.theme = r.value; save(); applyTheme();
+  });
   document.getElementById("hap").onchange = ev => { S.settings.haptics = ev.target.checked; save(); syncTapSwitches(); };
   const fileIn = document.getElementById("file");
   document.getElementById("imp").onclick = () => fileIn.click();

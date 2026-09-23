@@ -106,7 +106,8 @@ that, every logged session with its sets, and the option to delete one. Tapping 
 session in the Recent list on Train lands there too. Deleting a session also undoes any
 weight increase it caused, as long as nothing later has been lifted at the new weight.
 
-**More.** Where the log is kept and when it was last backed up, CSV export, full JSON
+**More.** Appearance (System, which follows the phone, or Light or Dark to keep the app
+that way), where the log is kept and when it was last backed up, CSV export, full JSON
 backup, restore from a file, the dated backup after every session, the beep at the end
 of a rest, the programme start date for the week counter, and a full reset.
 
