@@ -964,40 +964,36 @@ function serve(){
   }), "json");
   await page.close();
 
-  console.log("\nTab bar sits on the bottom edge");
+  console.log("\nTab bar sits on the bottom edge; only the middle scrolls");
   page = await newPage();
   await page.goto(base, {waitUntil:"networkidle"});
   const geom = () => page.evaluate(() => {
-    const n = document.querySelector("nav").getBoundingClientRect();
+    const n = document.querySelector("nav").getBoundingClientRect(), sc = document.getElementById("scroll");
+    const h = document.querySelector("header").getBoundingClientRect();
     const last = [...document.querySelectorAll("main > *")].pop().getBoundingClientRect();
-    return {navBottom:Math.round(n.bottom), navTop:Math.round(n.top), lastBottom:Math.round(last.bottom),
-            bodyBottom:Math.round(document.body.getBoundingClientRect().bottom),
-            vh:window.innerHeight, docH:Math.round(document.documentElement.scrollHeight),
-            scrollable:document.documentElement.scrollHeight > window.innerHeight};
+    return {navBottom:Math.round(n.bottom), navTop:Math.round(n.top), navH:Math.round(n.height), headTop:Math.round(h.top),
+            lastBottom:Math.round(last.bottom), vh:window.innerHeight,
+            docScrolls:document.documentElement.scrollHeight > window.innerHeight,
+            scrollable:sc.scrollHeight > sc.clientHeight};
   });
-  /* the Train tab is the short page that floated the bar on iPhone */
   let g = await geom();
   check("Train tab is the short page", !g.scrollable, g);
   eq("bar reaches the bottom on a short page", g.navBottom, g.vh);
-  eq("the bar ends where the body ends, not where the viewport happens to", g.navBottom, g.bodyBottom);
-  eq("the body fills the viewport, so nothing shows under the bar", g.docH >= g.vh, true);
-  eq("no page background below the bar", await page.evaluate(() => {
-    const n = document.querySelector("nav").getBoundingClientRect();
-    return document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 1) === null
-      || n.bottom >= window.innerHeight;
-  }), true);
-  /* and on a long, scrolling page, at the top and at the very bottom */
+  eq("the page itself never scrolls", g.docScrolls, false);
+  check("the tab bar is slim", g.navH <= 56, g.navH);
   await tapTab(page, "plan");
   g = await geom();
   check("Plan tab is the long page", g.scrollable, g);
+  eq("still the page itself does not scroll", g.docScrolls, false);
   eq("bar reaches the bottom on a long page", g.navBottom, g.vh);
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.evaluate(() => { const sc = document.getElementById("scroll"); sc.scrollTop = sc.scrollHeight; });
   await page.waitForTimeout(120);
   g = await geom();
   eq("bar stays on the bottom once scrolled down", g.navBottom, g.vh);
-  eq("still flush with the end of the body", g.navBottom, g.bodyBottom);
-  check("the last card clears the bar instead of hiding behind it", g.lastBottom <= g.navTop + 1,
-        {lastBottom:g.lastBottom, navTop:g.navTop});
+  eq("header stays at the top", g.headTop, 0);
+  check("the last card clears the bar", g.lastBottom <= g.navTop + 1, {lastBottom:g.lastBottom, navTop:g.navTop});
+  await tapTab(page, "progress");
+  eq("a new tab opens at its top", await page.evaluate(() => document.getElementById("scroll").scrollTop), 0);
   await page.close();
 
   console.log("\nDark mode and desktop width");

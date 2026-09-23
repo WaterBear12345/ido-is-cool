@@ -32,6 +32,8 @@ try {
   --g-core:#0094a8; --g-other:#69727d;
   --go:#0a7f3f; --go2:#12a352; --fig:#c3cad3;
   --pad-b:env(safe-area-inset-bottom,0px);
+  /* the tab bar keeps clear of the home indicator without the full 34pt inset */
+  --nav-b:max(calc(env(safe-area-inset-bottom,0px) - 16px), 4px);
 }
 /* Appearance: System follows the phone; Light or Dark in More stamps data-theme on <html>,
    which wins in both directions. The dark tokens are listed once per route in. */
@@ -61,10 +63,14 @@ body{
   background:var(--ground); color:var(--ink);
   font:400 16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
-  min-height:100vh; min-height:100dvh;      /* dvh keeps it honest as iOS chrome moves */
+  /* The document itself never scrolls; only #scroll between the header and the tab bar
+     does. iOS 26 and later blur the top edge of a scrolling page under the status bar,
+     which smudged the header; a page that does not scroll gets no blur. */
+  height:100vh; height:100dvh; overflow:hidden;
   display:flex; flex-direction:column;
-  overscroll-behavior-y:none;               /* no rubber-band that drags the bar off the edge */
+  overscroll-behavior:none;
 }
+.scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select{font:inherit;color:inherit}
 .hide,[hidden]{display:none !important}
@@ -72,14 +78,14 @@ input,select{font:inherit;color:inherit}
 
 /* ── header ───────────────────────────────────────────── */
 header{
-  position:sticky;top:0;z-index:20;background:var(--head);color:#fff;
+  flex:none;position:relative;z-index:20;background:var(--head);color:#fff;
   padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 14px;
 }
 header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
 header .sub{margin-top:2px;font-size:13px;color:var(--head-sub)}
 
-main{flex:1 0 auto;width:100%;padding:14px 12px 24px;max-width:640px;margin:0 auto}
-main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
+main{width:100%;padding:14px 12px 24px;max-width:640px;margin:0 auto}
+main > *{scroll-margin-top:12px;scroll-margin-bottom:12px}
 
 /* ── week strip ───────────────────────────────────────── */
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:12px}
@@ -261,12 +267,11 @@ svg .fp.hot{fill:currentColor}
 .finish button[disabled]{background:var(--hair);color:var(--steel)}
 
 /* ── tabs ─────────────────────────────────────────────── */
-nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
-    background:var(--navbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-top:1px solid var(--hair);padding-bottom:var(--pad-b)}
+nav{flex:none;position:relative;z-index:30;display:flex;flex-direction:column;
+    background:var(--navbg);border-top:1px solid var(--hair);padding-bottom:var(--nav-b)}
 .tabs{display:flex}
-.tabs button{flex:1;padding:10px 4px 11px;font-size:11.5px;font-weight:600;color:var(--steel);
-           display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button{flex:1;padding:7px 4px 3px;font-size:11px;font-weight:600;color:var(--steel);
+           display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
 .tabs button.on{color:var(--ink)}
 .tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;
         stroke-linecap:round;stroke-linejoin:round}
@@ -462,7 +467,7 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
   <div class="sub" id="hSub"></div>
 </header>
 
-<main id="view"></main>
+<div class="scroll" id="scroll"><main id="view"></main></div>
 
 <div class="scrim" id="scrim"></div>
 <div class="pad" id="pad" role="dialog" aria-modal="true" aria-labelledby="padTitle">
@@ -878,7 +883,7 @@ function toast(msg){
     el = document.createElement("div");
     el.id = "toast";
     el.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);z-index:60;"
-      + "bottom:calc(78px + env(safe-area-inset-bottom,0px));"
+      + "bottom:calc(64px + max(calc(env(safe-area-inset-bottom,0px) - 16px), 4px));"
       + "background:#101418;color:#fff;padding:11px 16px;border-radius:11px;font-size:14px;"
       + "max-width:88%;text-align:center;box-shadow:0 6px 22px rgba(0,0,0,.25);transition:opacity .25s;pointer-events:none";
     document.body.appendChild(el);
@@ -1174,7 +1179,7 @@ document.getElementById("padClear").onclick = () => {
 /* ── views ─────────────────────────────────────────────────────────────── */
 let tab = "train", edit = null, openKey = null, openHist = null, rrOpen = -1;
 function go(t){
-  if (t !== tab) window.scrollTo(0, 0);      /* a new tab opens at its top, not mid-page */
+  if (t !== tab) document.getElementById("scroll").scrollTop = 0;   /* a new tab opens at its top */
   tab = t;
   document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   render();
