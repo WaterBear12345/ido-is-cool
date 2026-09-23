@@ -36,10 +36,14 @@ once on wifi and it works without signal after that.
 **Train.** Opens on this week, and warns you at the top if storage is blocked or a backup
 is overdue. Each day shows the session scheduled for it, a green dot
 when something was logged that day, blue for today and red for a missed day. Start the
-session, tap an exercise, tap a set, and drag the slider to the reps you did, then Log set.
-The slider runs from zero to well past the top of the range, so a set short of the
-target is one drag away; it starts where your last set ended and marks the target
-range on its track. Every exercise has an icon pairing its equipment with a body figure,
+session, tap an exercise, tap a set, and scroll the rep ruler to the reps you did, then
+Log set. The ruler works like the iOS timer dial: a tick per rep and a number every five
+scroll under a fixed pointer and snap to whole reps, with about fourteen reps in view
+so each one is easy to land on. Ticks up to your number light up, a green bar marks
+the target range, and tapping a tick jumps to it. It runs from zero to well past the
+top of the range and starts where your last set ended. Each rep passed gives a haptic
+tick: a vibration on Android, and on iPhone the system tick that iOS 18 plays for a
+switch, since iPhone browsers have no vibration API. Every exercise has an icon pairing its equipment with a body figure,
 front or back, with the muscle it trains filled in. There are fifteen muscles: chest,
 lats, upper back, lower back, quads, adductors, glutes, hamstrings, calves, biceps,
 triceps, shoulders, rear delts, abs and obliques. Each is coloured by its region

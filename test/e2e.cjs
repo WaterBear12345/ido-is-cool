@@ -503,12 +503,30 @@ function serve(){
   eq("slider goes well below the range", await page.getAttribute("#padRange", "min"), "0");
   check("and well above it", +(await page.getAttribute("#padRange", "max")) >= 30);
   eq("first set starts at the bottom of the range", await page.textContent("#padNum"), "5");
-  eq("ticks mark the target", await page.locator("#padTicks .tk").allTextContents(), ["5", "8"]);
+  eq("a tick per rep on the ruler", await page.locator("#padTrack .rt").count(), 31);
+  eq("the target range is marked", await page.locator("#padTrack .rt.z").evaluateAll(els => els.map(e => +e.dataset.v)), [5, 6, 7, 8]);
+  eq("numbers every five", await page.locator("#padTrack .rt b").evaluateAll(els => els.map(e => e.textContent).filter(Boolean)),
+     ["0", "5", "10", "15", "20", "25", "30"]);
+  eq("the ruler opens on the guessed value", await page.evaluate(() => Math.round(document.getElementById("padTrack").scrollLeft / SPACING)), 5);
+  eq("ticks up to the value are lit", await page.locator("#padTrack .rt.lit").count(), 6);
+  const trackW = await page.evaluate(() => document.getElementById("padTrack").clientWidth);
+  check("only part of the range is in view, so each rep is wide enough to hit", trackW / 24 < 18, trackW / 24);
   await page.locator("#padRange").fill("3");
   eq("fewer than the range is allowed", await page.textContent("#padNum"), "3");
   eq("and says how far short", await page.textContent("#padZone"), "2 short of the range");
-  await page.click("#padPlus"); await page.click("#padPlus"); await page.click("#padPlus");
-  eq("+ nudges one rep at a time", await page.textContent("#padNum"), "6");
+  const ticks = await page.evaluate(async () => {
+    let n = 0; navigator.vibrate = () => { n++; return true; };
+    const tr = document.getElementById("padTrack");
+    for (const v of [4, 5, 6]){ tr.scrollLeft = v * SPACING; tr.dispatchEvent(new Event("scroll")); }
+    tr.scrollLeft = 6 * SPACING; tr.dispatchEvent(new Event("scroll"));   /* no change, no tick */
+    return n;
+  });
+  eq("scrolling the ruler sets the reps", await page.textContent("#padNum"), "6");
+  eq("with one haptic tick per rep passed", ticks, 3);
+  await page.locator('#padTrack .rt[data-v="7"]').click();
+  await page.waitForFunction(() => document.getElementById("padNum").textContent === "7");
+  eq("tapping a tick scrolls it under the pointer", await page.textContent("#padNum"), "7");
+  await page.locator("#padRange").fill("6");
   eq("in range", await page.textContent("#padZone"), "In range");
   await page.click("#padLog");
   await dismissGo(page);
