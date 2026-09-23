@@ -39,9 +39,13 @@ when something was logged that day, blue for today and red for a missed day. Sta
 session, tap an exercise, tap a set, and drag the slider to the reps you did, then Log set.
 The slider runs from zero to well past the top of the range, so a set short of the
 target is one drag away; it starts where your last set ended and marks the target
-range on its track. Every exercise has an icon for its equipment, tinted by muscle
-group. Barbell lifts draw the loaded bar in competition plate colours and list the
+range on its track. Every exercise has an icon pairing its equipment with the muscle
+group it trains, tinted in that group's colour. Every exercise also has a drawing of
+what to load. Barbells show the loaded bar in competition plate colours with the
 plates per side; tap "25 kg bar" to switch the bar between 20 and 25 kg on the spot.
+Dumbbells show the pair with the weight per hand and in total. Machines show the
+weight stack with the pin under the lifted plates, and cables add the pulley and
+handle. Free weights show a single weight with its number on it.
 "Edit" beside the target changes that exercise's rep range mid-workout.
 Logging a set starts a rest timer in the tab bar for that exercise's rest time, with
 −15 and +15 to adjust the one running and Skip to clear it. When it ends the whole screen turns green with the next set on it, and it
@@ -57,9 +61,9 @@ earned it.
 
 **Plan.** The programme is editable in the app. Rename sessions, move them between days,
 add or remove sessions, and for each exercise change the sets, rep range, increment,
-rest between sets, current weight, muscle group and equipment. "Barbell with plates"
-is a switch: on, it draws the bar and asks whether the bar is 20 or 25 kg; off, it
-offers dumbbells, machine or cable. A new exercise guesses its muscle group from its
+rest between sets, current weight, muscle group and equipment. Equipment is one row:
+barbell, dumbbell, machine, cable or free weight, the last for things like Russian
+twists with a plate or kettlebell. Picking barbell asks whether the bar is 20 or 25 kg. A new exercise guesses its muscle group from its
 name until you pick one. Reorder with the arrows. "Add exercise" can either
 create a new exercise or pick an existing one, which shares its weight with the other
 session it is in. That is how linking works: low rows and cable crunches are shared by
@@ -129,7 +133,7 @@ everything including the programme.
 
 The defaults are in `index.html` in the `DEFAULT_EX` and `DEFAULT_SESSIONS` blocks near
 the top of the script. `lo` and `hi` are the rep range, `inc` is the weight jump,
-`start` is the starting weight, `kind` is `bar`, `db`, `machine` or `cable`, `barKg` is
+`start` is the starting weight, `kind` is `bar`, `db`, `machine`, `cable` or `free`, `barKg` is
 20 or 25 for a barbell, `group` is the muscle group, and `rest` is the seconds between
 sets. The defaults for those last three live in `DEFAULT_BAR`, `DEFAULT_GROUP` and
 `DEFAULT_REST`. Squats default to a 25 kg bar. An existing log picks up groups, cable
@@ -143,8 +147,8 @@ Changes there only apply to fresh installs or after "Reset programme" in Plan.
 rule including incomplete and bottom-of-range sessions, shared versus separate weights,
 the planner, migration from the old storage format, export and restore, the backup
 prompt, the blocked-storage warning, the rest timer and its green screen, mid-workout
-set changes, the rep slider, rep ranges edited mid-workout, the barbell drawing and
-bar switch, muscle groups and their migration, the charts, and deleting a session with
+set changes, the rep slider, rep ranges edited mid-workout, the drawing for every kind
+of equipment and the bar switch, muscle groups and their migration, the charts, and deleting a session with
 its weight rolled back.
 
 ```

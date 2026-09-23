@@ -523,6 +523,23 @@ function serve(){
   await page.click('[data-open="4"]');
   await page.click('[data-rr="4"]');
   check("a shared exercise warns it changes the other session", (await page.textContent(".rredit")).includes("Shared"));
+  /* every kind of equipment has a drawing */
+  const vizOf = async i => { await page.evaluate(i => { S.live.open = i; save(); render(); }, i);
+    return page.getAttribute(".body .viz", "data-viz"); };
+  eq("lower A drawings: bar, bar, machine, machine, cable", [await vizOf(0), await vizOf(1), await vizOf(2), await vizOf(3), await vizOf(4)],
+     ["bar", "bar", "stack", "stack", "cable"]);
+  check("the stack says where the pin goes", (await page.textContent(".body .viz")).includes("Pin at40 kg"),
+        await page.textContent(".body .viz"));
+  eq("icons pair equipment with the muscle", await page.locator(".ex").nth(4).locator(".ico").getAttribute("aria-label"), "Cable, Core");
+  eq("two glyphs in each icon", await page.locator(".ex").nth(4).locator(".ico svg").count(), 2);
+  await page.click("#abandon");
+  await page.click('[data-start="upperA"]');
+  await vizOf(3);
+  eq("dumbbells drawn as a pair", await page.locator('.body .viz[data-viz="db"] .iron').count(), 8);
+  check("with the total for both", (await page.textContent(".body .viz")).includes("36 kg total"));
+  await page.evaluate(() => { S.live.log[3].kind = "free"; S.prog.ex.ohp.kind = "free"; save(); render(); });
+  eq("a free weight is drawn with its number", await page.textContent('.body .viz[data-viz="free"] .ironlbl'), "18");
+  await page.evaluate(() => { S.prog.ex.ohp.kind = "db"; save(); });
   await page.click("#abandon");
   check("session cards show their muscle groups", (await page.locator('.pick [data-start="upperA"] .gdots i').count()) >= 3);
 
@@ -531,10 +548,11 @@ function serve(){
   await page.locator(".sess").nth(0).locator("[data-add]").click();
   await page.fill('[data-f="name"]', "Front squat");
   check("group is guessed while typing", await page.locator('.edit input[name="group"][value="legs"]').isChecked());
-  check("bar weight hidden until barbell is on", await page.locator('.edit [data-when="bar"]').isHidden());
-  await page.check('.edit [data-f="barbell"]');
-  check("switching barbell on shows the bar weight", await page.locator('.edit [data-when="bar"]').isVisible());
-  check("and hides the other equipment", await page.locator('.edit [data-when="nobar"]').isHidden());
+  eq("one equipment row, barbell included", await page.locator('.edit .seg.eqs label').allTextContents(),
+     ["Barbell", "Dumbbell", "Machine", "Cable", "Free wt"]);
+  check("bar weight hidden until Barbell is picked", await page.locator('.edit [data-when="bar"]').isHidden());
+  await page.check('.edit input[name="kind"][value="bar"]');
+  check("picking Barbell shows the bar weight", await page.locator('.edit [data-when="bar"]').isVisible());
   await page.check('.edit input[name="barKg"][value="25"]');
   await page.fill('[data-f="w"]', "70");
   await page.click('.edit [data-bump="lo:-1"]');
@@ -553,16 +571,24 @@ function serve(){
   const z = Object.values(st2.prog.ex).find(e => e.name === "Zottman curls");
   eq("new dumbbell exercise", [z.kind, z.group], ["db", "shoulders"]);
   await page.click('[data-edit="upperA:0"]');
-  check("editing shows the barbell switch on for bench", await page.locator('.edit [data-f="barbell"]').isChecked());
+  check("editing shows Barbell picked for bench", await page.locator('.edit input[name="kind"][value="bar"]').isChecked());
   eq("with its 20 kg bar selected", await page.locator('.edit input[name="barKg"]:checked').getAttribute("value"), "20");
-  await page.uncheck('.edit [data-f="barbell"]');
   await page.check('.edit input[name="kind"][value="machine"]');
+  check("and the bar weight goes away", await page.locator('.edit [data-when="bar"]').isHidden());
   await page.click(".edit [data-save]");
   eq("barbell can be switched off", await page.evaluate(() => S.prog.ex.bench.kind), "machine");
   await page.click('[data-edit="upperA:0"]');
-  await page.check('.edit [data-f="barbell"]');
+  await page.check('.edit input[name="kind"][value="bar"]');
   await page.click(".edit [data-save]");
   eq("and back on", await page.evaluate(() => S.prog.ex.bench.kind), "bar");
+  await page.locator(".sess").nth(0).locator("[data-add]").click();
+  await page.fill('[data-f="name"]', "Russian twists");
+  check("a twist is guessed as core", await page.locator('.edit input[name="group"][value="core"]').isChecked());
+  await page.check('.edit input[name="kind"][value="free"]');
+  await page.fill('[data-f="w"]', "10");
+  await page.click(".edit [data-save]");
+  eq("free weight is its own kind", await page.evaluate(() =>
+    Object.values(S.prog.ex).filter(e => e.name === "Russian twists").map(e => [e.kind, e.group])), [["free", "core"]]);
   check("plan rows carry icons", (await page.locator(".pl .ico").count()) >= 20);
 
   /* Charts */

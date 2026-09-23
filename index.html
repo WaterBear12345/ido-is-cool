@@ -84,12 +84,16 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 .ex-head{display:flex;align-items:center;gap:12px;padding:12px 14px;width:100%;text-align:left}
 
 /* ── exercise icon: equipment glyph, tinted by muscle group ── */
-.ico{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;position:relative}
+/* one pill, two glyphs: equipment in ink, then the muscle group in its colour */
+.ico{height:40px;padding:0 8px;border-radius:12px;flex:none;display:flex;align-items:center;gap:5px;position:relative}
 .ico::before{content:"";position:absolute;inset:0;border-radius:inherit;background:currentColor;opacity:.13}
 .ico svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;
          stroke-linecap:round;stroke-linejoin:round;position:relative}
-.ico.sm{width:34px;height:34px;border-radius:10px}
-.ico.sm svg{width:20px;height:20px}
+.ico .eq{color:var(--ink);opacity:.72}
+.ico i{width:1px;align-self:stretch;margin:9px 0;background:currentColor;opacity:.3;position:relative}
+.ico.sm{height:34px;padding:0 6px;border-radius:10px;gap:4px}
+.ico.sm svg{width:19px;height:19px}
+.ico.sm i{margin:8px 0}
 .ex-name{flex:1;min-width:0}
 .ex-name b{display:block;font-size:16px;font-weight:600;line-height:1.25}
 .ex-name span{display:block;font-size:13px;color:var(--steel);margin-top:1px}
@@ -115,11 +119,18 @@ main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 .rredit .stp button{background:var(--panel)}
 .rredit .hint{grid-column:1/-1;margin:0}
 
-.plates{margin:14px 0 0}
-.plates svg{display:block;width:100%;height:auto}
-.plates .shaft{fill:var(--bar)}
-.plates .collar{fill:var(--steel)}
-.plates .pl8{stroke:rgba(0,0,0,.22);stroke-width:1}
+.viz{margin:14px 0 0}
+.viz svg{display:block;width:100%;height:auto}
+.viz .shaft{fill:var(--bar)}
+.viz .collar{fill:var(--steel)}
+.viz .pl8{stroke:rgba(0,0,0,.22);stroke-width:1}
+.viz .iron{fill:var(--ink)}
+.viz .ironlbl{fill:var(--panel);font-size:15px;font-weight:800;text-anchor:middle}
+.viz .slab{fill:var(--hair)}
+.viz .slab.up{fill:var(--accent)}
+.viz .rail{stroke:var(--hair);stroke-width:2.5;stroke-linecap:round}
+.viz .rope{fill:none;stroke:var(--steel);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.viz .pin{fill:var(--ink)}
 .platechips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;color:var(--steel)}
 .pc{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 6px;border-radius:99px;
     background:var(--ground);color:var(--ink);font-weight:700;font-size:12.5px}
@@ -256,8 +267,9 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
       display:flex;align-items:center;gap:12px;width:100%;text-align:left}
 .prow .nm{flex:1;min-width:0;font-size:15px;font-weight:600}
 .prow .nm em{display:block;font-style:normal;font-size:12.5px;color:var(--steel);margin-top:1px}
-.prow .now{font-size:19px;font-weight:700}
-.prow .dlt{font-size:13px;font-weight:700;color:var(--ok);min-width:52px;text-align:right}
+.prow .val{text-align:right;flex:none}
+.prow .now{font-size:19px;font-weight:700;line-height:1.1}
+.prow .dlt{font-size:12.5px;font-weight:700;color:var(--ok)}
 .prow .dlt.flat{color:var(--hair)}
 .spark{width:58px;height:24px;flex:none;overflow:visible}
 .spark path{fill:none;stroke:var(--spark);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -339,6 +351,8 @@ nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
 .seg{display:flex;gap:3px;background:var(--panel);border:1px solid var(--hair);border-radius:11px;padding:3px}
 .f .seg label{position:relative;flex:1;text-align:center;margin:0;padding:9px 4px;border-radius:8px;
      font-size:13.5px;font-weight:600;color:var(--steel)}
+.f .seg.eqs label{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 7px;font-size:11.5px;min-width:0}
+.seg.eqs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .seg label:has(input:checked){background:var(--ink);color:var(--ground)}
 .chips input,.seg input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer}
 .f .sw{display:flex;align-items:center;gap:12px;margin:0;background:var(--panel);border:1px solid var(--hair);
@@ -433,9 +447,10 @@ const BARS = [20, 25];
 const GROUPS = {chest:"Chest", back:"Back", legs:"Legs", arms:"Arms", shoulders:"Shoulders", core:"Core"};
 const GROUP_ORDER = Object.keys(GROUPS);
 const gcol = g => `var(--g-${GROUPS[g] ? g : "other"})`;
-const KINDS = [["db","Dumbbells"],["machine","Machine"],["cable","Cable"]];
+const KINDS = [["bar","Barbell"],["db","Dumbbell"],["machine","Machine"],["cable","Cable"],["free","Free wt"]];
+const KIND_NAME = {bar:"Barbell", db:"Dumbbells", machine:"Machine", cable:"Cable", free:"Free weight"};
 /* Guess a group from a name; first match wins, so "leg raise" is core and "leg curl" is legs. */
-const GUESS = [["core",/crunch|plank|\bab|sit.?up|leg raise|hanging/i],
+const GUESS = [["core",/crunch|plank|\bab|sit.?up|leg raise|hanging|twist|russian|oblique|wood.?chop/i],
   ["legs",/squat|leg|calf|lunge|rdl|deadlift|hip|glute|hamstring|quad|step.?up/i],
   ["arms",/curl|tricep|extension|pushdown|dip|skull/i],
   ["shoulders",/shoulder|lateral|lat raise|face pull|overhead press|ohp|rear delt|shrug|upright/i],
@@ -447,10 +462,25 @@ const ICONS = {
   bar:'<path d="M1.5 12h21"/><path d="M5 8.5v7M8 6v12M16 6v12M19 8.5v7"/>',
   db:'<g transform="rotate(-45 12 12)"><path d="M8.5 12h7"/><path d="M5 9v6M8.2 7v10M15.8 7v10M19 9v6"/></g>',
   machine:'<path d="M12 1.5V5"/><rect x="5" y="5" width="14" height="4" rx="1.2"/><rect x="5" y="10.5" width="14" height="4" rx="1.2"/><rect x="5" y="16" width="14" height="4" rx="1.2"/><path d="M19 12.5h2.5"/>',
-  cable:'<circle cx="12" cy="5" r="2.6"/><path d="M12 7.6V15"/><path d="M8.3 15h7.4l-1.3 5H9.6z"/>'
+  cable:'<circle cx="12" cy="5" r="2.6"/><path d="M12 7.6V15"/><path d="M8.3 15h7.4l-1.3 5H9.6z"/>',
+  free:'<path d="M8.6 10V8.4a3.4 3.4 0 0 1 6.8 0V10"/><path d="M7.2 10.2h9.6a5.8 5.8 0 0 1 .9 9.3H6.3a5.8 5.8 0 0 1 .9-9.3z"/>'
 };
-const icon = (e, cls = "") => `<span class="ico ${cls}" style="color:${gcol(e.group)}" aria-hidden="true">`
-  + `<svg viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg></span>`;
+/* Muscle-group glyphs, same 24px grid. */
+const MUSCLES = {
+  chest:'<path d="M3.5 5.5c2.6 1 5.4 1.5 8.5 1.5s5.9-.5 8.5-1.5"/><path d="M12 8.2c-1.9-1-5.4-1.1-6.8.3-1.3 1.3-1.1 4.9 1 6.6 1.7 1.3 4 1.3 5.8.2z"/><path d="M12 8.2c1.9-1 5.4-1.1 6.8.3 1.3 1.3 1.1 4.9-1 6.6-1.7 1.3-4 1.3-5.8.2z"/>',
+  back:'<path d="M4 5c2.6 1.2 5.2 1.6 8 1.6S17.4 6.2 20 5l-2.6 10.2L14.6 20H9.4l-2.8-4.8z"/><path d="M12 6.6V20"/><path d="M8 11.5c1.4.8 2.7 1.2 4 1.2s2.6-.4 4-1.2"/>',
+  legs:'<path d="M9 2.5v7.2c0 1.4-.6 2.6-1.4 3.6l-.8 1.1c-.6.8-.8 1.7-.6 2.7l.9 4.4"/><path d="M15 2.5v7.2c0 1.4.6 2.6 1.4 3.6l.8 1.1c.6.8.8 1.7.6 2.7l-.9 4.4"/><path d="M9.6 12.6h.1M14.3 12.6h.1"/>',
+  arms:'<path d="M3 16.3c0-1.6 1.3-2.8 2.8-2.8h6.6l2.9-6.6c.4-.9 1.5-1.3 2.4-.9l1.1.5c.9.4 1.3 1.4 1 2.3l-2.5 8.2c-.5 1.6-2 2.6-3.6 2.6H5.8C4.3 19.6 3 18.4 3 16.3z"/><path d="M6.8 13.5c.8-2.3 2.8-3.6 5.1-3.2"/>',
+  shoulders:'<path d="M3.5 20v-4.6C3.5 10.6 7.3 7 12 7s8.5 3.6 8.5 8.4V20"/><path d="M7.5 20v-4.2M16.5 20v-4.2"/><circle cx="12" cy="4" r="1.6"/>',
+  core:'<rect x="6.5" y="3.5" width="11" height="17" rx="3.5"/><path d="M12 3.5v17M6.5 9.2h11M6.5 14.8h11"/>',
+  other:'<circle cx="12" cy="12" r="7.5"/><path d="M12 8.5v7M8.5 12h7"/>'
+};
+const icon = (e, cls = "") => {
+  const g = GROUPS[e.group] ? e.group : "other";
+  return `<span class="ico ${cls}" style="color:${gcol(e.group)}" role="img" aria-label="${KIND_NAME[e.kind] || "Machine"}, ${GROUPS[g] || "other"}">`
+    + `<svg class="eq" viewBox="0 0 24 24">${ICONS[e.kind] || ICONS.machine}</svg><i></i>`
+    + `<svg viewBox="0 0 24 24">${MUSCLES[g]}</svg></span>`;
+};
 
 /* ── default programme, starting weights as of 6 Sep 2026 ──────────────
    kind: "bar" = barbell with plate maths on a barKg bar, "db" = dumbbells (per
@@ -1035,7 +1065,7 @@ function liveView(){
         <div class="reprange"><span>Target <b>${e.lo}–${e.hi}</b> reps · all sets at ${e.hi} adds ${kg(e.inc)} kg</span>
           <button class="link" data-rr="${i}">${rrOpen === i ? "Done" : "Edit"}</button></div>
         ${rrOpen === i ? rrEditor(i, e) : ""}
-        ${plateRow(x.weight, e, i)}
+        ${equipViz(x.weight, e, i)}
         <div class="sets">`;
       x.reps.forEach((r, si) => {
         const cls = r === null ? "set empty" : (r >= e.hi ? "set hit" : "set");
@@ -1075,9 +1105,64 @@ const liveKey = i => S.live.log[i].k;
 /* Plate width and drawn height per plate, in the drawing's 320-wide units. */
 const PLATE_W = {25:13, 20:12, 15:11, 10:10, 5:8, 2.5:6, 1.25:5};
 const PLATE_H = {25:74, 20:70, 15:64, 10:57, 5:46, 2.5:37, 1.25:30};
+/* Every kind of equipment gets a drawing: the barbell's plates, a pair of dumbbells, a
+   weight stack with its pin (and a pulley for cables), or a single free weight. */
+function equipViz(total, e, i){
+  if (e.kind === "bar") return plateRow(total, e, i);
+  if (e.kind === "db") return dbViz(total);
+  if (e.kind === "free") return freeViz(total);
+  return stackViz(total, e.kind === "cable");
+}
+function dbViz(total){
+  const f = Math.max(0, Math.min(1, total / 40)), hw = 9 + 9 * f, hh = 30 + 34 * f, cy = 42;
+  const one = cx => {
+    const h = cx - 24, rgt = cx + 24;
+    return `<rect class="shaft" x="${h}" y="${cy - 3.5}" width="48" height="7" rx="3"/>
+      <rect class="iron" x="${h - hw}" y="${cy - hh / 2}" width="${hw}" height="${hh}" rx="3"/>
+      <rect class="iron" x="${rgt}" y="${cy - hh / 2}" width="${hw}" height="${hh}" rx="3"/>
+      <rect class="iron" x="${h - hw - 5}" y="${cy - hh * .32}" width="5" height="${hh * .64}" rx="2"/>
+      <rect class="iron" x="${rgt + hw}" y="${cy - hh * .32}" width="5" height="${hh * .64}" rx="2"/>`;
+  };
+  return `<div class="viz" data-viz="db"><svg viewBox="0 0 320 84" role="img" aria-label="Two ${kg(total)} kg dumbbells">
+      ${one(92)}${one(228)}</svg>
+    <div class="platechips"><span class="pc">${kg(total)} kg</span><span>in each hand</span>
+      <span style="margin-left:auto">${kg(total * 2)} kg total</span></div></div>`;
+}
+function freeViz(total){
+  const f = Math.max(0, Math.min(1, total / 32)), r = 22 + 10 * f, cx = 160, cy = 84 - r - 3;
+  return `<div class="viz" data-viz="free"><svg viewBox="0 0 320 84" role="img" aria-label="A ${kg(total)} kg weight">
+      <path class="rope" d="M${cx - r * .55} ${cy - r * .7}V${cy - r - 6}a${r * .55} ${r * .55} 0 0 1 ${r * 1.1} 0V${cy - r * .7}"
+        style="stroke:var(--ink);stroke-width:6"/>
+      <circle class="iron" cx="${cx}" cy="${cy}" r="${r}"/>
+      <text class="ironlbl" x="${cx}" y="${cy + 5}">${kg(total)}</text></svg>
+    <div class="platechips"><span class="pc">${kg(total)} kg</span><span>one weight, held in both hands</span></div></div>`;
+}
+/* Illustrative stack: ten slabs, the lifted ones raised above the rest with the pin under
+   them. Real stacks vary, so the label gives the weight, not a plate count. */
+function stackViz(total, cable){
+  const step = [2.5, 5, 10, 20, 40].find(st => total / st <= 8) || 40;
+  const n = 10, up = Math.max(1, Math.min(n, Math.round(total / step)));
+  const cx = cable ? 132 : 160, w = 92, x0 = cx - w / 2, sh = 5, gap = 1.3, base = 81, lift = 6;
+  let slabs = "";
+  for (let j = 0; j < n; j++){                 /* j = 0 is the top slab */
+    const lifted = j < up, y = base - (n - j) * (sh + gap) - (lifted ? lift : 0);
+    slabs += `<rect class="slab${lifted ? " up" : ""}" x="${x0}" y="${y.toFixed(1)}" width="${w}" height="${sh}" rx="1.5"/>`;
+  }
+  const pinY = base - (n - up + 1) * (sh + gap) - lift + sh / 2;
+  const topY = base - n * (sh + gap) - lift;
+  const top = cable
+    ? `<path class="rope" d="M${cx} ${topY}V6H${cx + 96}"/><circle cx="${cx + 96}" cy="14" r="8" class="rope"/>
+       <path class="rope" d="M${cx + 104} 14V52"/><path class="rope" d="M${cx + 94} 52h20l-3 12h-14z" style="stroke:var(--ink)"/>`
+    : `<path class="rope" d="M${cx} ${topY}V3"/>`;
+  return `<div class="viz" data-viz="${cable ? "cable" : "stack"}"><svg viewBox="0 0 320 84" role="img"
+      aria-label="${cable ? "Cable" : "Machine"} stack, pin at ${kg(total)} kg">
+      <path class="rail" d="M${x0 - 6} 4V82M${x0 + w + 6} 4V82"/>${top}${slabs}
+      <rect class="pin" x="${x0 + w - 4}" y="${(pinY - 1.6).toFixed(1)}" width="26" height="3.2" rx="1.6"/>
+      <circle class="pin" cx="${x0 + w + 24}" cy="${pinY.toFixed(1)}" r="4"/></svg>
+    <div class="platechips"><span>Pin at</span><span class="pc">${kg(total)} kg</span>
+      <span>on the ${cable ? "cable" : "machine"} stack</span></div></div>`;
+}
 function plateRow(total, e, i){
-  if (e.kind === "db") return `<p class="nobar">${kg(total)} kg in each hand</p>`;
-  if (e.kind !== "bar") return `<p class="nobar">Set the pin to ${kg(total)} kg</p>`;
   const bar = e.barKg || BARBELL, b = plateBreak(total, bar);
   const barBtn = i === undefined ? "" :
     `<button class="barkg" data-barkg="${i}" aria-label="Bar weight, tap to switch">${bar} kg bar ⇄</button>`;
@@ -1098,7 +1183,7 @@ function plateRow(total, e, i){
   for (const [w] of b.plates) counts[w] = (counts[w] || 0) + 1;
   const ws = Object.keys(counts).map(Number).sort((a, c) => c - a);
   const said = ws.map(w => `${counts[w] > 1 ? counts[w] + " × " : ""}${w}`).join(", ");
-  return `<div class="plates" data-perside="${b.plates.map(p => p[0]).join(",")}" data-bar="${bar}">
+  return `<div class="viz plates" data-viz="bar" data-perside="${b.plates.map(p => p[0]).join(",")}" data-bar="${bar}">
     <svg viewBox="0 0 320 84" role="img" aria-label="Per side: ${said} kg, on a ${bar} kg bar">
       <rect class="shaft" x="4" y="37" width="72" height="10" rx="3"/>
       <rect class="shaft" x="244" y="37" width="72" height="10" rx="3"/>
@@ -1148,7 +1233,7 @@ function wireLive(){
   document.querySelectorAll("[data-w]").forEach(b => b.onclick = () => {
     const [i, dir] = b.dataset.w.split(":").map(Number);
     const x = S.live.log[i], e = liveDef(x);
-    const step = e.kind === "db" ? 2 : 2.5;
+    const step = e.kind === "db" ? 2 : e.kind === "free" ? (e.inc || 2.5) : 2.5;
     x.weight = Math.max(0, Math.round(((x.weight || 0) + dir * step) * 100) / 100);
     if (S.prog.ex[x.k]) S.weights[x.k] = x.weight;
     save(); render();
@@ -1212,18 +1297,17 @@ function planView(){
 const numStep = (f, v) => `<div class="stp"><button data-bump="${f}:-1" aria-label="Lower">−</button>
   <input data-f="${f}" type="number" inputmode="numeric" min="1" value="${v}"><button data-bump="${f}:1" aria-label="Higher">+</button></div>`;
 function exFields(e, w, a = "", isNew = false){
-  const bar = e.kind === "bar", kind = KINDS.some(([v]) => v === e.kind) ? e.kind : "machine";
+  const kind = KINDS.some(([v]) => v === e.kind) ? e.kind : "machine", bar = kind === "bar";
   return `
     <div class="wide"${a}><label>Name</label><input data-f="name" value="${esc(e.name || "")}" maxlength="40"
       ${isNew ? 'placeholder="e.g. Overhead extensions"' : ""}></div>
     <div class="wide"${a}><label>Muscle group</label><div class="chips">${GROUP_ORDER.map(g =>
       `<label><input type="radio" name="group" value="${g}"${e.group === g ? " checked" : ""}><i style="background:${gcol(g)}"></i>${GROUPS[g]}</label>`).join("")}</div></div>
-    <div class="wide"${a}><label class="sw"><span><b>Barbell with plates</b><small>Draws the bar and which plates to load</small></span>
-      <input type="checkbox" data-f="barbell"${bar ? " checked" : ""}></label></div>
+    <div class="wide"${a}><label>Equipment</label><div class="seg eqs">${KINDS.map(([v, l]) =>
+      `<label><input type="radio" name="kind" value="${v}"${kind === v ? " checked" : ""}>`
+      + `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[v]}</svg>${l}</label>`).join("")}</div></div>
     <div class="wide" data-when="bar"${a}${bar ? "" : " hidden"}><label>Bar weight</label><div class="seg">${BARS.map(b =>
       `<label><input type="radio" name="barKg" value="${b}"${(e.barKg || BARBELL) === b ? " checked" : ""}>${b} kg</label>`).join("")}</div></div>
-    <div class="wide" data-when="nobar"${a}${bar ? " hidden" : ""}><label>Equipment</label><div class="seg">${KINDS.map(([v, l]) =>
-      `<label><input type="radio" name="kind" value="${v}"${kind === v ? " checked" : ""}>${l}</label>`).join("")}</div></div>
     <div${a}><label>Reps from</label>${numStep("lo", e.lo)}</div>
     <div${a}><label>Reps to</label>${numStep("hi", e.hi)}</div>
     <div${a}><label>Increment, kg</label><input data-f="inc" type="number" inputmode="decimal" step="0.5" min="0" value="${e.inc}"></div>
@@ -1355,11 +1439,9 @@ function wirePlan(){
     const [f, d] = b.dataset.bump.split(":"), inp = get(f);
     inp.value = Math.max(1, Math.min(50, (+inp.value || 0) + +d));
   });
-  const bb = get("barbell");
-  bb.onchange = () => {
-    form.querySelector('[data-when="bar"]').hidden = !bb.checked;
-    form.querySelector('[data-when="nobar"]').hidden = bb.checked;
-  };
+  form.querySelectorAll('[name="kind"]').forEach(r => r.onchange = () => {
+    form.querySelector('[data-when="bar"]').hidden = r.value !== "bar";
+  });
   /* A new exercise picks its group from its name until one is chosen by hand. */
   let groupTouched = !!form.querySelector('[name="group"]:checked');
   form.querySelectorAll('[name="group"]').forEach(r => r.onchange = () => { groupTouched = true; });
@@ -1379,7 +1461,7 @@ function wirePlan(){
     const pick = n => (form.querySelector(`[name="${n}"]:checked`) || {}).value;
     const name = get("name").value.trim(), lo = +get("lo").value, hi = +get("hi").value,
           inc = +get("inc").value, w = +get("w").value, rest = +get("rest").value,
-          kind = bb.checked ? "bar" : (pick("kind") || "machine"),
+          kind = pick("kind") || "machine",
           barKg = +(pick("barKg") || BARBELL), group = pick("group") || guessGroup(name);
     if (!name){ toast("Give it a name."); return; }
     if (!(lo >= 1 && hi >= lo)){ toast("Rep range needs a low end and a high end."); return; }
@@ -1522,8 +1604,8 @@ function progressView(){
       h += `<button class="prow" data-px="${k}">${icon(e, "sm")}
         <div class="nm">${esc(e.name)}${tag}</div>
         ${spark(k)}
-        <div class="now">${kg(now)}</div>
-        <div class="dlt${d ? "" : " flat"}">${d > 0 ? "+" + kg(d) : d < 0 ? kg(d) : "—"}</div>
+        <div class="val"><div class="now">${kg(now)}</div>
+          <div class="dlt${d ? "" : " flat"}">${d > 0 ? "+" + kg(d) : d < 0 ? kg(d) : "—"}</div></div>
       </button>`;
       if (openKey === k) h += exDetail(k);
     }
