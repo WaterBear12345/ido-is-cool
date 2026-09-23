@@ -454,6 +454,14 @@ function serve(){
   eq("a new exercise keeps its rest", await page.evaluate(() => Object.values(S.prog.ex).find(e => e.name === "Dips").rest), 180);
 
   await tapTab(page, "more");
+  eq("More has a haptics check with a real switch", await page.getAttribute("#hapSwitch", "switch"), "");
+  eq("and a button that fires the same tick the ruler uses", await page.evaluate(() => {
+    let n = 0; const saved = navigator.vibrate; navigator.vibrate = () => { n++; return true; };
+    document.getElementById("hapTest").click(); navigator.vibrate = saved; return n;
+  }), 1);
+  await page.uncheck("#hap");
+  eq("the ruler's haptics toggle persists", await page.evaluate(() => S.settings.haptics), false);
+  await page.check("#hap");
   await page.uncheck("#snd");
   eq("beep toggle persists", await page.evaluate(() => S.settings.sound), false);
   await tapTab(page, "train");
@@ -523,6 +531,33 @@ function serve(){
   });
   eq("scrolling the ruler sets the reps", await page.textContent("#padNum"), "6");
   eq("with one haptic tick per rep passed", ticks, 3);
+  /* iPhone path: no vibrate, so the switch is flipped from the finger's touch events */
+  const iosTicks = await page.evaluate(() => {
+    const saved = navigator.vibrate; navigator.vibrate = undefined;
+    const tr = document.getElementById("padTrack");
+    let n = 0;
+    switchTick(); hapticEl.querySelector("input").addEventListener("click", () => n++);
+    n = 0;
+    const touch = type => tr.dispatchEvent(new Event(type));
+    touch("touchstart");
+    for (const v of [7, 8, 8, 9]){ tr.scrollLeft = v * SPACING; tr.dispatchEvent(new Event("scroll")); touch("touchmove"); }
+    touch("touchend");
+    const scrolledOnly = n;
+    tr.scrollLeft = 6 * SPACING; tr.dispatchEvent(new Event("scroll"));   /* a scroll with no touch */
+    const afterBareScroll = n;
+    navigator.vibrate = saved;
+    return [scrolledOnly, afterBareScroll];
+  });
+  eq("on iPhone the switch ticks once per rep, from the touch", iosTicks[0], 3);
+  eq("and never from a scroll on its own", iosTicks[1], 3);
+  await page.evaluate(() => { S.settings.haptics = false; save(); });
+  eq("haptics can be turned off", await page.evaluate(() => {
+    let n = 0; navigator.vibrate = () => { n++; return true; };
+    const tr = document.getElementById("padTrack");
+    tr.scrollLeft = 10 * SPACING; tr.dispatchEvent(new Event("scroll"));
+    return n;
+  }), 0);
+  await page.evaluate(() => { S.settings.haptics = true; save(); });
   await page.locator('#padTrack .rt[data-v="7"]').click();
   await page.waitForFunction(() => document.getElementById("padNum").textContent === "7");
   eq("tapping a tick scrolls it under the pointer", await page.textContent("#padNum"), "7");

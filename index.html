@@ -664,7 +664,7 @@ const defaultProg = () => JSON.parse(JSON.stringify({ex:DEFAULT_EX, sessions:DEF
    server: a static page can be served by GitHub Pages but never written to. A
    dated backup file after each session is what makes the log outlive the phone. */
 let S;
-const DEFAULTS = () => ({autosave:true, sound:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
+const DEFAULTS = () => ({autosave:true, sound:true, haptics:true, startDate:DEFAULT_START, lastBackupAt:null, lastBackupCount:0, muscles:2});
 function blank(){
   const prog = defaultProg(), w = {};
   for (const k in prog.ex) w[k] = prog.ex[k].start;
@@ -1035,16 +1035,24 @@ const range = document.getElementById("padRange");
 /* A slider position as a CSS length, corrected for the thumb so ticks sit under its centre. */
 const track = document.getElementById("padTrack");
 const SPACING = 24;                  /* px per rep: about fourteen reps in view, not the whole range */
-/* A tick of feedback per rep. Android vibrates. iPhone browsers have no vibration API; on
-   iOS 18 toggling a switch-style checkbox plays the system haptic, so a hidden one is flipped. */
-let hapticEl = null;
-function haptic(){
-  try { if (navigator.vibrate && navigator.vibrate(8)) return; } catch (e) {}
+/* A tick of feedback per rep. Android: navigator.vibrate, which works from any handler once
+   the page has been touched. iPhone browsers have no vibration API; toggling a switch-style
+   checkbox plays the system haptic (iOS 18 and later), but WebKit only does so while it is
+   handling the user's own touch, not from a scroll event. So the switch is flipped from the
+   finger's touch events, and the scroll event only ever vibrates. */
+let hapticEl = null, tickedAt = null;
+const canVibrate = () => typeof navigator.vibrate === "function";
+function vibrateTick(){
+  if (!S.settings.haptics || !canVibrate()) return false;
+  try { return navigator.vibrate(8) !== false; } catch (e) { return false; }
+}
+function switchTick(){
+  if (!S.settings.haptics) return;
   try {
     if (!hapticEl){
       hapticEl = document.createElement("label");
       hapticEl.setAttribute("aria-hidden", "true");
-      hapticEl.style.cssText = "position:fixed;left:-200px;top:0;opacity:0;pointer-events:none";
+      hapticEl.style.display = "none";
       const i = document.createElement("input");
       i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1;
       hapticEl.appendChild(i); document.body.appendChild(hapticEl);
@@ -1052,6 +1060,8 @@ function haptic(){
     hapticEl.click();
   } catch (e) {}
 }
+/* One tick from inside a user event: whichever mechanism this browser has. */
+function haptic(){ if (!vibrateTick()) switchTick(); }
 /* Best first guess for a set: what is already there, else the set before it this session,
    else the same set last time, else the bottom of the range. */
 function guessReps(x, si, e){
@@ -1094,11 +1104,22 @@ function openPad(ei, si){
   setPadVal(guessReps(x, si, e));     /* after the sheet is shown, so the ruler has a width */
 }
 /* The ruler drives the value as it scrolls; each new rep gives a haptic tick. */
+const repAt = () => Math.max(0, Math.min(+range.max, Math.round(track.scrollLeft / SPACING)));
 track.addEventListener("scroll", () => {
   if (!padCtx) return;
-  const n = Math.max(0, Math.min(+range.max, Math.round(track.scrollLeft / SPACING)));
-  if (n !== padCtx.n){ setPadVal(n, false); haptic(); }
+  const n = repAt();
+  if (n !== padCtx.n){ setPadVal(n, false); if (vibrateTick()) tickedAt = n; }
 }, {passive:true});
+/* On iPhone the tick has to come from the touch itself: each time the finger's movement
+   carries the ruler onto a new rep, flip the switch. */
+const touchTick = () => {
+  if (!padCtx || canVibrate()) return;
+  const n = repAt();
+  if (n !== tickedAt){ tickedAt = n; switchTick(); }
+};
+track.addEventListener("touchstart", () => { tickedAt = repAt(); }, {passive:true});
+track.addEventListener("touchmove", touchTick, {passive:true});
+track.addEventListener("touchend", touchTick, {passive:true});
 /* Tapping a tick scrolls it under the pointer. */
 track.addEventListener("click", ev => {
   const t = ev.target.closest(".rt");
@@ -2065,6 +2086,19 @@ function moreView(){
     <label class="tgl"><input type="checkbox" id="snd"${S.settings.sound ? " checked" : ""}>
       Beep when a rest ends</label>
   </div>
+  <div class="card"><h2>Haptics</h2>
+    <p>The rep ruler ticks once per rep. Android vibrates. iPhone browsers cannot vibrate, so the
+       ruler borrows the tick iOS plays when a switch is flipped, and that only works in some browsers.
+       Two tests tell which case this phone is in:</p>
+    <label class="tgl"><input type="checkbox" switch id="hapSwitch">
+      1. Flip this switch. Feel a tick? Then this browser has haptics at all.</label>
+    <button id="hapTest">2. Tap for a test tick</button>
+    <p class="hint">Feel a tick from the button? Then the app can trigger it.</p>
+    <p class="hint">If the switch ticks but the button does not, the trick is blocked in this browser.
+       If neither ticks, this browser gives no haptics; Safari added to the home screen is worth a try.</p>
+    <label class="tgl"><input type="checkbox" id="hap"${S.settings.haptics ? " checked" : ""}>
+      Haptic ticks on the rep ruler</label>
+  </div>
   <div class="card"><h2>Programme start</h2>
     <p>Sets the week counter on the Train tab.</p>
     <input type="date" id="sdate" value="${esc(S.settings.startDate || "")}" aria-label="Programme start date">
@@ -2103,6 +2137,10 @@ function wireMore(){
   document.getElementById("json").onclick = backupNow;
   document.getElementById("auto").onchange = ev => { S.settings.autosave = ev.target.checked; save(); };
   document.getElementById("snd").onchange = ev => { S.settings.sound = ev.target.checked; save(); };
+  document.getElementById("hap").onchange = ev => { S.settings.haptics = ev.target.checked; save(); };
+  document.getElementById("hapTest").onclick = () => {
+    const was = S.settings.haptics; S.settings.haptics = true; haptic(); S.settings.haptics = was;
+  };
   const fileIn = document.getElementById("file");
   document.getElementById("imp").onclick = () => fileIn.click();
   fileIn.onchange = () => {

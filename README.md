@@ -42,8 +42,11 @@ scroll under a fixed pointer and snap to whole reps, with about fourteen reps in
 so each one is easy to land on. Ticks up to your number light up, a green bar marks
 the target range, and tapping a tick jumps to it. It runs from zero to well past the
 top of the range and starts where your last set ended. Each rep passed gives a haptic
-tick: a vibration on Android, and on iPhone the system tick that iOS 18 plays for a
-switch, since iPhone browsers have no vibration API. Every exercise has an icon pairing its equipment with a body figure,
+tick: a vibration on Android, and on iPhone the system tick that iOS 18 and later play
+for a switch, since iPhone browsers have no vibration API. That tick only fires from
+the finger's own touch, so it follows your finger and stops once the ruler coasts on
+its own. More has a Haptics card with two tests that show whether this phone and
+browser support it at all, and a switch to turn the ruler's ticks off. Every exercise has an icon pairing its equipment with a body figure,
 front or back, with the muscle it trains filled in. There are fifteen muscles: chest,
 lats, upper back, lower back, quads, adductors, glutes, hamstrings, calves, biceps,
 triceps, shoulders, rear delts, abs and obliques. Each is coloured by its region
