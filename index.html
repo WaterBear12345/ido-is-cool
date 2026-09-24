@@ -14,7 +14,7 @@ try {
 <meta name="description" content="Workout planner and training log. Double progression, plate maths, editable programme. Static, offline, no accounts.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Barload">
 <meta name="theme-color" content="#101418">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -63,14 +63,10 @@ body{
   background:var(--ground); color:var(--ink);
   font:400 16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
-  /* The document itself never scrolls; only #scroll between the header and the tab bar
-     does. iOS 26 and later blur the top edge of a scrolling page under the status bar,
-     which smudged the header; a page that does not scroll gets no blur. */
-  height:100vh; height:100dvh; overflow:hidden;
+  min-height:100vh; min-height:100dvh;      /* dvh keeps it honest as iOS chrome moves */
   display:flex; flex-direction:column;
-  overscroll-behavior:none;
+  overscroll-behavior-y:none;               /* no rubber-band that drags the bar off the edge */
 }
-.scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select{font:inherit;color:inherit}
 .hide,[hidden]{display:none !important}
@@ -78,14 +74,14 @@ input,select{font:inherit;color:inherit}
 
 /* ── header ───────────────────────────────────────────── */
 header{
-  flex:none;position:relative;z-index:20;background:var(--head);color:#fff;
+  position:sticky;top:0;z-index:20;background:var(--head);color:#fff;
   padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 14px;
 }
 header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
 header .sub{margin-top:2px;font-size:13px;color:var(--head-sub)}
 
-main{width:100%;padding:14px 12px 24px;max-width:640px;margin:0 auto}
-main > *{scroll-margin-top:12px;scroll-margin-bottom:12px}
+main{flex:1 0 auto;width:100%;padding:14px 12px 24px;max-width:640px;margin:0 auto}
+main > *{scroll-margin-top:84px;scroll-margin-bottom:150px}
 
 /* ── week strip ───────────────────────────────────────── */
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:12px}
@@ -267,8 +263,9 @@ svg .fp.hot{fill:currentColor}
 .finish button[disabled]{background:var(--hair);color:var(--steel)}
 
 /* ── tabs ─────────────────────────────────────────────── */
-nav{flex:none;position:relative;z-index:30;display:flex;flex-direction:column;
-    background:var(--navbg);border-top:1px solid var(--hair);padding-bottom:var(--nav-b)}
+nav{position:sticky;bottom:0;z-index:30;display:flex;flex-direction:column;
+    background:var(--navbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid var(--hair);padding-bottom:var(--nav-b)}
 .tabs{display:flex}
 .tabs button{flex:1;padding:7px 4px 3px;font-size:11px;font-weight:600;color:var(--steel);
            display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
@@ -467,7 +464,7 @@ nav{flex:none;position:relative;z-index:30;display:flex;flex-direction:column;
   <div class="sub" id="hSub"></div>
 </header>
 
-<div class="scroll" id="scroll"><main id="view"></main></div>
+<main id="view"></main>
 
 <div class="scrim" id="scrim"></div>
 <div class="pad" id="pad" role="dialog" aria-modal="true" aria-labelledby="padTitle">
@@ -1179,7 +1176,7 @@ document.getElementById("padClear").onclick = () => {
 /* ── views ─────────────────────────────────────────────────────────────── */
 let tab = "train", edit = null, openKey = null, openHist = null, rrOpen = -1;
 function go(t){
-  if (t !== tab) document.getElementById("scroll").scrollTop = 0;   /* a new tab opens at its top */
+  if (t !== tab) window.scrollTo(0, 0);      /* a new tab opens at its top, not mid-page */
   tab = t;
   document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   render();
